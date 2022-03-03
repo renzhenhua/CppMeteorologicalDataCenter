@@ -1,4 +1,9 @@
 #include "_public.h"
+#include "_ftp.h"
+
+CLogFile logfile;
+
+Cftp ftp;
 
 // 程序退出和信号2、15的处理函数。
 void EXIT(int sig);
