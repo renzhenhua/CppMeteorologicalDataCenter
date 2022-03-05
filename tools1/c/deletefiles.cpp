@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     // 关闭全部的信号和输入输出。
     // 设置信号,在shell状态下可用 "kill + 进程号" 正常终止些进程。
     // 但请不要用 "kill -9 +进程号" 强行终止。
-    // CloseIOAndSignal(true);
+    CloseIOAndSignal(true);
     signal(SIGINT, EXIT);
     signal(SIGTERM, EXIT);
 
