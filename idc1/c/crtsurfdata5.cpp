@@ -168,7 +168,7 @@ void CrtSurfData()
     struct st_surfdata stsurfdata;
 
     // 遍历气象站点参数的vscode容器
-    for (auto ii = 0; ii < vstcode.size(); ++ii)
+    for (int ii = 0; ii < vstcode.size(); ++ii)
     {
         memset(&stsurfdata, 0, sizeof(struct st_surfdata));
         // 用随机数填充分钟观测数据的结构体。
@@ -214,7 +214,7 @@ bool CrtSurfFile(const char *outpath, const char *datafmt)
         File.Fprintf("{\"data\":[\n");
 
     // 遍历存放观测数据的vsurfdata容器。
-    for (auto ii = 0; ii < vsurfdata.size(); ++ii)
+    for (int ii = 0; ii < vsurfdata.size(); ++ii)
     {
         // 写入一条记录
         if (strcmp(datafmt, "csv") == 0)
