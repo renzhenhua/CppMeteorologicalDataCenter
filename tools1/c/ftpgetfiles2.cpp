@@ -43,7 +43,7 @@ bool _ftpgetfiles();
 
 int main(int argc, char const *argv[])
 {
-    // 小目标，把ftp服务上某目录中的文件下载到本地的目录中。
+    // 小目标，把ftp服务器上某目录中的文件下载到本地的目录中。
 
     if (argc != 3)
     {
