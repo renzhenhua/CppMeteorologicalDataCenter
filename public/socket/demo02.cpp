@@ -54,6 +54,8 @@ int main(int argc,char *argv[])
     }
     printf("接收：%s\n",buffer);
 
+    exit(0);
+
     strcpy(buffer,"ok");
     if ( (iret=send(clientfd,buffer,strlen(buffer),0))<=0) // 向客户端发送响应结果。
     { perror("send"); break; }

@@ -10,3 +10,4 @@
     * gzipfiles.cpp 用于压缩历史的数据文件或日志文件
     * procctl.cpp 服务程序的调度程序，周期性启动服务程序或shell脚本
     * ftpgetfiles.cpp 调用ftp获取服务器文件
+    * ftpputfiles.cpp ftp上传文件

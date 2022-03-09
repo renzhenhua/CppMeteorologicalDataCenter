@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <signal.h>
  
 int main(int argc,char *argv[])
 {
@@ -45,6 +46,18 @@ int main(int argc,char *argv[])
     if ( (iret=send(sockfd,buffer,strlen(buffer),0))<=0) // 向服务端发送请求报文。
     { perror("send"); break; }
     printf("发送：%s\n",buffer);
+
+
+    signal(SIGPIPE, SIG_IGN);
+    sleep(2);
+    iret=send(sockfd, buffer, strlen(buffer), 0);
+    printf("ret1=%d\n", iret);
+    iret=send(sockfd, buffer, strlen(buffer), 0);
+    printf("ret2=%d\n", iret);
+    iret=send(sockfd, buffer, strlen(buffer), 0);
+    printf("ret3=%d\n", iret);
+    iret=send(sockfd, buffer, strlen(buffer), 0);
+    printf("ret4=%d\n", iret);
 
     memset(buffer,0,sizeof(buffer));
     if ( (iret=recv(sockfd,buffer,sizeof(buffer),0))<=0) // 接收服务端的回应报文。
