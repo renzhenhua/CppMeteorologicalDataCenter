@@ -1,5 +1,5 @@
 /*
- * 程序名：demo12.cpp，此程序用于演示网银APP软件的服务端
+ * 程序名：demo14.cpp，此程序用于演示网银APP软件的服务端，增加了心跳报文。
 
  *
  * 作者：任振华
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
-        printf("Using:./demo12 port logfile\nExample:./demo12 5005 /tmp/demo12.log\n\n");
+        printf("Using:./demo14 port logfile\nExample:./demo14 5005 /tmp/demo14.log\n\n");
         return -1;
     }
 

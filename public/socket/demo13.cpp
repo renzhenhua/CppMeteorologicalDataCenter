@@ -1,5 +1,5 @@
 /*
- * 程序名：demo11.cpp，此程序用于演示网银APP软件的客户端。
+ * 程序名：demo13.cpp，此程序用于演示网银APP软件的客户端，增加了心跳报文。
  * 作者：任振华。
  */
 #include "../_public.h"
@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
-        printf("Using:./demo11 ip port\nExample:./demo11 127.0.0.1 5005\n\n");
+        printf("Using:./demo13 ip port\nExample:./demo13 127.0.0.1 5005\n\n");
         return -1;
     }
 
