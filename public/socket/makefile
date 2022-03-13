@@ -1,4 +1,4 @@
-all:demo07 demo10 demo11 demo12 demo13
+all:demo07 demo10 demo11 demo12 demo13 demo14
 
 demo07:demo07.cpp
 	g++ -g -o demo07 demo07.cpp ../_public.cpp -lm -lc
@@ -15,5 +15,8 @@ demo12:demo12.cpp
 demo13:demo13.cpp
 	g++ -g -o demo13 demo13.cpp ../_public.cpp -lm -lc
 
+demo14:demo14.cpp
+	g++ -g -o demo14 demo14.cpp ../_public.cpp -lm -lc
+
 clean:
-	rm demo07 demo10 demo11 demo12
+	rm demo07 demo10 demo11 demo12 demo13 demo14

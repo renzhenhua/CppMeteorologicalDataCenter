@@ -17,6 +17,9 @@ bool bsession = false; // 客户端是否已登录：true-已登录;false-未登
 // 处理业务的主函数。
 bool _main(const char *strrecvbuffer, char *strsendbuffer);
 
+// 心跳。
+bool srv000(char *strsendbuffer);
+
 // 登录业务处理函数。
 bool srv001(const char *strrecvbuffer, char *strsendbuffer);
 
@@ -28,9 +31,9 @@ bool srv003(const char *strrecvbuffer, char *strsendbuffer);
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        printf("Using:./demo14 port logfile\nExample:./demo14 5005 /tmp/demo14.log\n\n");
+        printf("Using:./demo14 port logfile timeout\nExample:./demo14 5005 /tmp/demo14.log 35\n\n");
         return -1;
     }
 
@@ -86,7 +89,7 @@ int main(int argc, char *argv[])
             memset(strrecvbuffer, 0, sizeof(strrecvbuffer));
             memset(strsenbuffer, 0, sizeof(strsenbuffer));
 
-            if (TcpServer.Read(strrecvbuffer) == false)
+            if (TcpServer.Read(strrecvbuffer, atoi(argv[3])) == false)
                 break; // 接收客户端的请求报文。
             logfile.Write("接收：%s\n", strrecvbuffer);
 
@@ -136,7 +139,6 @@ void ChldEXIT(int sig)
 // 处理业务的主函数。
 bool _main(const char *strrecvbuffer, char *strsendbuffer)
 {
-    // 解析strrecvbuffer, 获取服务代码（业务代码）。
     // 解析strrecvbuffer，获取服务代码（业务代码）。
     int isrvcode = -1;
     GetXMLBuffer(strrecvbuffer, "srvcode", &isrvcode);
@@ -150,19 +152,30 @@ bool _main(const char *strrecvbuffer, char *strsendbuffer)
     // 处理每种业务
     switch (isrvcode)
     {
+    case 0: // 心跳
+        srv000(strsendbuffer);
+        break;
     case 1: // 登录
         srv001(strrecvbuffer, strsendbuffer);
         break;
     case 2: // 查询余额
         srv002(strrecvbuffer, strsendbuffer);
         break;
-    case 3: // 转账。
+    case 3: // 转账
         srv003(strrecvbuffer, strsendbuffer);
         break;
     default:
         logfile.Write("业务代码不合法：%s\n", strrecvbuffer);
         return false;
     }
+}
+
+// 心跳。
+bool srv000(char *strsendbuffer)
+{
+    stpcpy(strsendbuffer, "<retcode>0</retcode><message>成功。</message>");
+
+    return true;
 }
 
 // 登录。

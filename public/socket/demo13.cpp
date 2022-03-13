@@ -6,7 +6,8 @@
 
 CTcpClient TcpClient;
 
-bool srv001(); // 登录业务
+bool srv000(); // 心跳。
+bool srv001(); // 登录业务。
 bool srv002(); // 我的账号（查询余额）。
 
 int main(int argc, char *argv[])
@@ -30,6 +31,23 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    sleep(3);
+
+    if (srv002() == false) // 我的账号（查询余额）。
+    {
+        printf("srv002() failed.\n");
+        return -1;
+    }
+
+    sleep(10);
+
+    for (int ii = 3; ii < 5; ii++)
+    {
+        if (srv000() == false)
+            break;
+        sleep(ii);
+    }
+
     if (srv002() == false) // 我的账号（查询余额）。
     {
         printf("srv002() failed.\n");
@@ -39,7 +57,25 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-// 登录业务
+// 心跳。
+bool srv000()
+{
+    char buffer[1024];
+
+    SPRINTF(buffer, sizeof(buffer), "<srvcode>0</srvcode>");
+    printf("发送：%s\n", buffer);
+    if (TcpClient.Write(buffer) == false)
+        return false; // 向服务端发送请求报文。
+
+    memset(buffer, 0, sizeof(buffer));
+    if (TcpClient.Read(buffer) == false)
+        return false; // 接收服务端的回应报文。
+    printf("接收：%s\n", buffer);
+
+    return true;
+}
+
+// 登录业务。
 bool srv001()
 {
     char buffer[1024];
@@ -68,7 +104,7 @@ bool srv001()
     return true;
 }
 
-// 我的账号（查询余额）
+// 我的账号（查询余额）。
 bool srv002()
 {
     char buffer[1024];
