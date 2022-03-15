@@ -1,6 +1,6 @@
 /*
- * 程序名：tcpputfiles.cpp, 采用tcp协议，实现文件发送的客户端
- * 作者：任振华。
+ * 程序名：tcpputfiles.cpp，采用tcp协议，实现文件上传的客户端。
+ * 作者：吴从周。
  */
 #include "_public.h"
 
@@ -23,12 +23,12 @@ struct st_arg
 
 CLogFile logfile;
 
-// 程序退出和信号2、15的处理函数
+// 程序退出和信号2、15的处理函数。
 void EXIT(int sig);
 
 void _help();
 
-// 把xml解析到参数strag的结构中
+// 把xml解析到参数starg结构中。
 bool _xmltoarg(char *strxmlbuffer);
 
 CTcpClient TcpClient;
@@ -76,13 +76,14 @@ int main(int argc, char *argv[])
     // 向服务端发起连接请求。
     if (TcpClient.ConnectToServer(starg.ip, starg.port) == false)
     {
-        printf("TcpClient.ConnectToServer(%s,%d) failed.\n", starg.ip, starg.port);
+        logfile.Write("TcpClient.ConnectToServer(%s,%d) failed.\n", starg.ip, starg.port);
         EXIT(-1);
     }
 
-    if (Login(argv[2]) == false) // 登录业务
+    // 登录业务。
+    if (Login(argv[2]) == false)
     {
-        printf("Login() failed.\n");
+        logfile.Write("Login() failed.\n");
         EXIT(-1);
     }
 
@@ -154,8 +155,8 @@ void _help()
     printf("\n");
     printf("Using:/project/tools1/bin/tcpputfiles logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>1</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n");
-    printf("       /project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>2</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n\n\n");
+    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles2 /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>1</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n");
+    printf("       /project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles2 /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>2</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n\n\n");
 
     printf("本程序是数据中心的公共功能模块，采用tcp协议把文件发送给服务端。\n");
     printf("logfilename   本程序运行的日志文件。\n");
@@ -265,10 +266,11 @@ bool _xmltoarg(char *strxmlbuffer)
 bool _tcpputfiles()
 {
     CDir Dir;
+
     // 调用OpenDir()打开starg.clientpath目录。
     if (Dir.OpenDir(starg.clientpath, starg.matchname, 10000, starg.andchild) == false)
     {
-        logfile.Write("Did.OpenDir(%s) 失败。\n", starg.clientpath);
+        logfile.Write("Dir.OpenDir(%s) 失败。\n", starg.clientpath);
         return false;
     }
 
@@ -301,7 +303,7 @@ bool _tcpputfiles()
         }
         logfile.Write("strrecvbuffer=%s\n", strrecvbuffer);
 
-        // 删除或者转存本的文件。
+        // 删除或者转存本地的文件。
     }
 
     return true;
