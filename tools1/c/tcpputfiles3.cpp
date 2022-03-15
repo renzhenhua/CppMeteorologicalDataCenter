@@ -1,5 +1,5 @@
 /*
- * 程序名：tcpputfiles2.cpp，采用tcp协议，实现文件上传的客户端。
+ * 程序名：tcpputfiles3.cpp，采用tcp协议，实现文件上传的客户端。
  * 作者：任振华。
  */
 #include "_public.h"
@@ -42,6 +42,9 @@ char strsendbuffer[1024]; // 接收报文的buffer。
 
 // 文件上传的主函数，执行一次文件上传的任务。
 bool _tcpputfiles();
+
+// 把文件的内容发送给对端。
+bool SendFile(const int sockfd, const char *filename, const int filesize);
 
 CPActive PActive; // 进程心跳。
 
@@ -112,13 +115,13 @@ bool ActiveTest()
     memset(strrecvbuffer, 0, sizeof(strrecvbuffer));
 
     SPRINTF(strsendbuffer, sizeof(strsendbuffer), "<activetest>ok</activetest>");
-    logfile.Write("发送：%s\n", strsendbuffer);
+    // logfile.Write("发送：%s\n",strsendbuffer);
     if (TcpClient.Write(strsendbuffer) == false)
         return false; // 向服务端发送请求报文。
 
     if (TcpClient.Read(strrecvbuffer, 20) == false)
         return false; // 接收服务端的回应报文。
-    logfile.Write("接收：%s\n", strrecvbuffer);
+    // logfile.Write("接收：%s\n",strrecvbuffer);
 
     return true;
 }
@@ -153,10 +156,10 @@ void EXIT(int sig)
 void _help()
 {
     printf("\n");
-    printf("Using:/project/tools1/bin/tcpputfiles logfilename xmlbuffer\n\n");
+    printf("Using:/project/tools1/bin/tcpputfiles3 logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles2 /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>1</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n");
-    printf("       /project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles2 /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>2</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n\n\n");
+    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles3 /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>1</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n");
+    printf("       /project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles3 /log/idc/tcpputfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>2</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n\n\n");
 
     printf("本程序是数据中心的公共功能模块，采用tcp协议把文件发送给服务端。\n");
     printf("logfilename   本程序运行的日志文件。\n");
@@ -286,7 +289,7 @@ bool _tcpputfiles()
         // 把文件名、修改时间、文件大小组成报文，发送给对端。
         SNPRINTF(strsendbuffer, sizeof(strsendbuffer), 1000, "<filename>%s</filename><mtime>%s</mtime><size>%d</size>", Dir.m_FullFileName, Dir.m_ModifyTime, Dir.m_FileSize);
 
-        logfile.Write("strsendbuffer=%s\n", strsendbuffer);
+        // logfile.Write("strsendbuffer=%s\n",strsendbuffer);
         if (TcpClient.Write(strsendbuffer) == false)
         {
             logfile.Write("TcpClient.Write() failed.\n");
@@ -294,6 +297,17 @@ bool _tcpputfiles()
         }
 
         // 把文件的内容发送给对端。
+        logfile.Write("send %s(%d) ...", Dir.m_FullFileName, Dir.m_FileSize);
+        if (SendFile(TcpClient.m_connfd, Dir.m_FullFileName, Dir.m_FileSize) == true)
+        {
+            logfile.WriteEx("ok.\n");
+        }
+        else
+        {
+            logfile.WriteEx("failed.\n");
+            TcpClient.Close();
+            return false;
+        }
 
         // 接收对端的确认报文。
         if (TcpClient.Read(strrecvbuffer, 20) == false)
@@ -301,10 +315,58 @@ bool _tcpputfiles()
             logfile.Write("TcpClient.Read() failed.\n");
             return false;
         }
-        logfile.Write("strrecvbuffer=%s\n", strrecvbuffer);
+        // logfile.Write("strrecvbuffer=%s\n",strrecvbuffer);
 
         // 删除或者转存本地的文件。
     }
+
+    return true;
+}
+
+// 把文件的内容发送给对端。
+bool SendFile(const int sockfd, const char *filename, const int filesize)
+{
+    int onread = 0;     // 每次调用fread时打算读取的字节数。
+    int bytes = 0;      // 调用一次fread从文件中读取的字节数。
+    char buffer[1000];  // 存放读取数据的buffer。
+    int totalbytes = 0; // 从文件中已读取的字节总数。
+    FILE *fp = NULL;
+
+    // 以"rb"的模式打开文件。
+    if ((fp = fopen(filename, "rb")) == NULL)
+        return false;
+
+    while (true)
+    {
+        memset(buffer, 0, sizeof(buffer));
+
+        // 计算本次应该读取的字节数，如果剩余的数据超过1000字节，就打算读1000字节。
+        if (filesize - totalbytes > 1000)
+            onread = 1000;
+        else
+            onread = filesize - totalbytes;
+
+        // 从文件中读取数据。
+        bytes = fread(buffer, 1, onread, fp);
+
+        // 把读取到的数据发送给对端。
+        if (bytes > 0)
+        {
+            if (Writen(sockfd, buffer, bytes) == false)
+            {
+                fclose(fp);
+                return false;
+            }
+        }
+
+        // 计算文件已读取的字节总数，如果文件已读完，跳出循环。
+        totalbytes = totalbytes + bytes;
+
+        if (totalbytes == filesize)
+            break;
+    }
+
+    fclose(fp);
 
     return true;
 }

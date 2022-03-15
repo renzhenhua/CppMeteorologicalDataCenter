@@ -1,7 +1,5 @@
 /*
- * 程序名：fileserver.cpp，此程序用于演示网银APP软件的服务端，增加了心跳报文。
-
- *
+ * 程序名：fileserver3.cpp，文件传输的服务端。
  * 作者：任振华
  */
 #include "_public.h"
@@ -48,7 +46,7 @@ int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
-        printf("Using:./fileserver port logfile \nExample:./fileserver 5005 /log/idc/fileserver.log \n\n");
+        printf("Using:./fileserver3 port logfile\nExample:./fileserver3 5005 /log/idc/fileserver3.log\n\n");
         return -1;
     }
 
@@ -83,19 +81,17 @@ int main(int argc, char *argv[])
 
         logfile.Write("客户端（%s）已连接。\n", TcpServer.GetIP());
 
-        // if (fork() > 0)
-        // {
-        //     TcpServer.CloseClient();
-        //     continue;
-        // } // 父进程继续回到Accept()。
+        /*
+        if (fork()>0) { TcpServer.CloseClient(); continue; }  // 父进程继续回到Accept()。
 
-        // // 子进程重新设置退出信号。
-        // signal(SIGINT, ChldEXIT);
-        // signal(SIGTERM, ChldEXIT);
+        // 子进程重新设置退出信号。
+        signal(SIGINT,ChldEXIT); signal(SIGTERM,ChldEXIT);
 
-        // TcpServer.CloseListen();
+        TcpServer.CloseListen();
+        */
 
-        // 子进程与客户端通讯，处理业务。
+        // 子进程与客户端进行通讯，处理业务。
+
         // 处理登录客户端的登录报文。
         if (ClientLogin() == false)
             ChldEXIT(-1);
@@ -208,19 +204,19 @@ void RecvFilesMain()
         memset(strrecvbuffer, 0, sizeof(strrecvbuffer));
 
         // 接收客户端的报文。
-        // 第二个参数的取值必须大于starg.timetvl, 小于starg.timeout。
+        // 第二个参数的取值必须大于starg.timetvl，小于starg.timeout。
         if (TcpServer.Read(strrecvbuffer, starg.timetvl + 10) == false)
         {
             logfile.Write("TcpServer.Read() failed.\n");
             return;
         }
-        // logfile.Write("strrecvbuffer=%s\n", strrecvbuffer);
+        // logfile.Write("strrecvbuffer=%s\n",strrecvbuffer);
 
         // 处理心跳报文。
         if (strcmp(strrecvbuffer, "<activetest>ok</activetest>") == 0)
         {
             strcpy(strsendbuffer, "ok");
-            // logfile.Write("strsendbuffer=%s\n", strsendbuffer);
+            // logfile.Write("strsendbuffer=%s\n",strsendbuffer);
             if (TcpServer.Write(strsendbuffer) == false)
             {
                 logfile.Write("TcpServer.Write() failed.\n");
@@ -233,8 +229,8 @@ void RecvFilesMain()
         {
             // 解析上传文件请求报文的xml。
             char clientfilename[301];
-            char mtime[21];
             memset(clientfilename, 0, sizeof(clientfilename));
+            char mtime[21];
             memset(mtime, 0, sizeof(mtime));
             int filesize = 0;
             GetXMLBuffer(strrecvbuffer, "filename", clientfilename, 300);
@@ -262,7 +258,7 @@ void RecvFilesMain()
             }
 
             // 把接收结果返回给对端。
-            // logfile.Write("strsendbuffer=%s\n", strsendbuffer);
+            // logfile.Write("strsendbuffer=%s\n",strsendbuffer);
             if (TcpServer.Write(strsendbuffer) == false)
             {
                 logfile.Write("TcpServer.Write() failed.\n");
