@@ -1,3 +1,8 @@
+/*
+ * 程序名：ftpputfiles.cpp, 采用ftp协议上传文件
+ * 作者：任振华。
+ */
+
 #include "_public.h"
 #include "_ftp.h"
 
@@ -55,14 +60,14 @@ void EXIT(int sig);
 void _help();
 
 // 把xml解析到参数starg结构中
-bool _xmltoarg(const char *strxmlbuffer);
+bool _xmltoarg(char *strxmlbuffer);
 
 // 上传文件功能的主函数。
 bool _ftpputfiles();
 
 CPActive PActive; // 进程心跳
 
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
 
     if (argc != 3)
@@ -112,7 +117,7 @@ bool _ftpputfiles()
     // 把localpath目录下的文件加载到vlistfile2容器中。
     if (LoadLocalFile() == false)
     {
-        logfile.Write("LoadListFile() failed.\n");
+        logfile.Write("LoadLocalFile() failed.\n");
     }
 
     if (starg.ptype == 1)
@@ -134,10 +139,9 @@ bool _ftpputfiles()
     PActive.UptATime(); // 更新进程的心跳。
 
     char strremotefilename[301], strlocalfilename[301];
-    // 遍历容器vfilelist2。
+    // 遍历容器vlistfile2。
     for (int ii = 0; ii < vlistfile2.size(); ii++)
     {
-
         SNPRINTF(strremotefilename, sizeof(strremotefilename), 300, "%s/%s", starg.remotepath, vlistfile2[ii].filename);
         SNPRINTF(strlocalfilename, sizeof(strlocalfilename), 300, "%s/%s", starg.localpath, vlistfile2[ii].filename);
 
@@ -213,7 +217,7 @@ void _help()
 }
 
 // 把xml解析到参数starg结构中
-bool _xmltoarg(const char *strxmlbuffer)
+bool _xmltoarg(char *strxmlbuffer)
 {
     memset(&starg, 0, sizeof(struct st_arg));
 
@@ -301,7 +305,7 @@ bool _xmltoarg(const char *strxmlbuffer)
     return true;
 }
 
-// 把ftp.nlist()方法获取到的list文件加载到容器vfilelist中。
+// 把ftp.nlist()方法获取到的list文件加载到容器vlistfile2中。
 bool LoadLocalFile()
 {
     vlistfile2.clear();

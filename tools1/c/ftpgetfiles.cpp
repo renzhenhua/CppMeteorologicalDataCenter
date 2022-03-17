@@ -1,3 +1,8 @@
+/*
+ * 程序名：ftpgetfiles.cpp, 采用ftp协议下载文件
+ * 作者：任振华。
+ */
+
 #include "_public.h"
 #include "_ftp.h"
 
@@ -44,7 +49,7 @@ bool WriteToOKFile();
 // 如果ptype==1，把下载成功的文件记录追加到okfilename文件中。
 bool AppendToOKFile(struct st_fileinfo *stfileinfo);
 
-// 把ftp.nlist()方法获取到的list文件加载到容器vfilelist中。
+// 把ftp.nlist()方法获取到的list文件加载到容器vlistfile2中。
 bool LoadListFile();
 
 CLogFile logfile;
@@ -56,15 +61,15 @@ void EXIT(int sig);
 
 void _help();
 
-// 把xml解析到参数starg结构中
-bool _xmltoarg(const char *strxmlbuffer);
+// 把xml解析到参数starg结构中。
+bool _xmltoarg(char *strxmlbuffer);
 
 // 下载文件功能的主函数。
 bool _ftpgetfiles();
 
-CPActive PActive; // 进程心跳
+CPActive PActive; // 进程心跳。
 
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
 
     if (argc != 3)
@@ -119,8 +124,6 @@ bool _ftpgetfiles()
     }
     // logfile.Write("ftp.chdir(%s) ok.\n", starg.remotepath);
 
-    PActive.UptATime();  // 更新进程的心跳。
-
     // 调用ftp.nlist()方法列出服务器目录中的文件，结果存放到本地文件中。
     if (ftp.nlist(".", starg.listfilename) == false)
     {
@@ -128,13 +131,16 @@ bool _ftpgetfiles()
         return false;
     }
 
-    PActive.UptATime();  // 更新进程的心跳。
+    PActive.UptATime(); // 更新进程的心跳。
 
-    // 把ftp.nlist()方法获取到的list文件加载到容器vfilelist2中。
+    // 把ftp.nlist()方法获取到的list文件加载到容器vlistfile2中。
     if (LoadListFile() == false)
     {
         logfile.Write("LoadListFile() failed.\n");
+        return false;
     }
+
+    PActive.UptATime(); // 更新进程的心跳。
 
     if (starg.ptype == 1)
     {
@@ -152,10 +158,10 @@ bool _ftpgetfiles()
         vlistfile2.swap(vlistfile4);
     }
 
-    PActive.UptATime();  // 更新进程的心跳。
+    PActive.UptATime(); // 更新进程的心跳。
 
     char strremotefilename[301], strlocalfilename[301];
-    // 遍历容器vfilelist2。
+    // 遍历容器vlistfile2。
     for (int ii = 0; ii < vlistfile2.size(); ii++)
     {
 
@@ -173,7 +179,7 @@ bool _ftpgetfiles()
 
         logfile.WriteEx("ok.\n");
 
-        PActive.UptATime();  // 更新进程的心跳。
+        PActive.UptATime(); // 更新进程的心跳。
 
         // 如果ptype==1，把下载成功的文件纪录追加到okfilename文件中
         if (starg.ptype == 1)
@@ -206,6 +212,7 @@ bool _ftpgetfiles()
 void EXIT(int sig)
 {
     printf("程序退出，sig=%d\n\n", sig);
+    exit(0);
 }
 
 void _help()
@@ -236,7 +243,7 @@ void _help()
 }
 
 // 把xml解析到参数starg结构中
-bool _xmltoarg(const char *strxmlbuffer)
+bool _xmltoarg(char *strxmlbuffer)
 {
     memset(&starg, 0, sizeof(struct st_arg));
 
@@ -334,7 +341,7 @@ bool _xmltoarg(const char *strxmlbuffer)
     return true;
 }
 
-// 把ftp.nlist()方法获取到的list文件加载到容器vfilelist中。
+// 把ftp.nlist()方法获取到的list文件加载到容器vlistfile2中。
 bool LoadListFile()
 {
     vlistfile2.clear();
@@ -361,7 +368,7 @@ bool LoadListFile()
 
         if ((starg.ptype == 1) && (starg.checkmtime == true))
         {
-            // 获取ftp服务端文件时间
+            // 获取ftp服务端文件时间。
             if (ftp.mtime(stfileinfo.filename) == false)
             {
                 logfile.Write("ftp.mtime(%s) failed.\n", stfileinfo.filename);

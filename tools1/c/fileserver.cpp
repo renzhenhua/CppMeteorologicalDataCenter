@@ -32,8 +32,19 @@ void FathEXIT(int sig); // 父进程退出函数。
 void ChldEXIT(int sig); // 子进程退出函数。
 
 bool ActiveTest(); // 心跳。
+
 char strrecvbuffer[1024]; // 发送报文的buffer。
 char strsendbuffer[1024]; // 接收报文的buffer。
+
+// 文件下载的主函数，执行一次文件下载的任务。
+bool _tcpputfiles();
+bool bcontinue = true; // 如果调用_tcpputfiles发送了文件，bcontinue为true，初始化为true。
+
+// 把文件的内容发送给对端。
+bool SendFile(const int sockfd, const char *filename, const int filesize);
+
+// 删除或者转存本地的文件。
+bool AckMessage(const char *strrecvbuffer);
 
 // 登录业务处理函数。
 bool ClientLogin();
@@ -41,7 +52,10 @@ bool ClientLogin();
 // 上传文件的主函数。
 void RecvFilesMain();
 
-// 接收上传文件的内容。
+// 下载文件的主函数。
+void SendFilesMain();
+
+// 接收文件的内容。
 bool RecvFile(const int sockfd, const char *filename, const char *mtime, int filesize);
 
 CPActive PActive; // 进程心跳。
@@ -50,7 +64,9 @@ int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
-        printf("Using:./fileserver port logfile \nExample:./fileserver 5005 /log/idc/fileserver.log\n\n");
+        printf("Using:./fileserver port logfile\n");
+        printf("Example:./fileserver 5005 /log/idc/fileserver.log\n");
+        printf("         /project/tools1/bin/procctl 10 /project/tools1/bin/fileserver 5005 /log/idc/fileserver.log\n\n\n");
         return -1;
     }
 
@@ -85,19 +101,20 @@ int main(int argc, char *argv[])
 
         logfile.Write("客户端（%s）已连接。\n", TcpServer.GetIP());
 
-        // if (fork() > 0)
-        // {
-        //     TcpServer.CloseClient();
-        //     continue;
-        // } // 父进程继续回到Accept()。
+        if (fork() > 0)
+        {
+            TcpServer.CloseClient();
+            continue;
+        } // 父进程继续回到Accept()。
 
-        // // 子进程重新设置退出信号。
-        // signal(SIGINT, ChldEXIT);
-        // signal(SIGTERM, ChldEXIT);
+        // 子进程重新设置退出信号。
+        signal(SIGINT, ChldEXIT);
+        signal(SIGTERM, ChldEXIT);
 
-        // TcpServer.CloseListen();
+        TcpServer.CloseListen();
 
-        // 子进程与客户端通讯，处理业务。
+        // 子进程与客户端进行通讯，处理业务。
+
         // 处理登录客户端的登录报文。
         if (ClientLogin() == false)
             ChldEXIT(-1);
@@ -107,6 +124,8 @@ int main(int argc, char *argv[])
             RecvFilesMain();
 
         // 如果clienttype==2，调用下载文件的主函数。
+        if (starg.clienttype == 2)
+            SendFilesMain();
 
         ChldEXIT(0);
     }
@@ -186,6 +205,7 @@ bool _xmltoarg(char *strxmlbuffer)
     GetXMLBuffer(strxmlbuffer, "andchild", &starg.andchild);
     GetXMLBuffer(strxmlbuffer, "matchname", starg.matchname);
     GetXMLBuffer(strxmlbuffer, "srvpath", starg.srvpath);
+    GetXMLBuffer(strxmlbuffer, "srvpathbak", starg.srvpathbak);
 
     GetXMLBuffer(strxmlbuffer, "timetvl", &starg.timetvl);
     if (starg.timetvl > 30)
@@ -254,7 +274,7 @@ void RecvFilesMain()
             strcpy(serverfilename, clientfilename);
             UpdateStr(serverfilename, starg.clientpath, starg.srvpath, false);
 
-            // 接收上传文件的内容。
+            // 接收文件的内容。
             logfile.Write("recv %s(%d) ...", serverfilename, filesize);
             if (RecvFile(TcpServer.m_connfd, serverfilename, mtime, filesize) == true)
             {
@@ -278,7 +298,7 @@ void RecvFilesMain()
     }
 }
 
-// 接收上传文件的内容。
+// 接收文件的内容。
 bool RecvFile(const int sockfd, const char *filename, const char *mtime, int filesize)
 {
     // 生成临时文件名。
@@ -330,6 +350,225 @@ bool RecvFile(const int sockfd, const char *filename, const char *mtime, int fil
     // 把临时文件RENAME为正式的文件。
     if (RENAME(strfilenametmp, filename) == false)
         return false;
+
+    return true;
+}
+
+// 下载文件的主函数。
+void SendFilesMain()
+{
+    PActive.AddPInfo(starg.timeout, starg.pname);
+
+     while (true)
+    {
+        // 调用文件下载的主函数，执行一次文件下载的任务。
+        if (_tcpputfiles() == false)
+        {
+            logfile.Write("_tcpputfiles() failed.\n");
+            return;
+        }
+
+        if (bcontinue == false)
+        {
+            sleep(starg.timetvl);
+
+            if (ActiveTest() == false)
+                break;
+        }
+
+        PActive.UptATime();
+    }
+}
+
+// 心跳。
+bool ActiveTest()
+{
+    memset(strsendbuffer, 0, sizeof(strsendbuffer));
+    memset(strrecvbuffer, 0, sizeof(strrecvbuffer));
+
+    SPRINTF(strsendbuffer, sizeof(strsendbuffer), "<activetest>ok</activetest>");
+    // logfile.Write("发送：%s\n",strsendbuffer);
+    if (TcpServer.Write(strsendbuffer) == false)
+        return false; // 向服务端发送请求报文。
+
+    if (TcpServer.Read(strrecvbuffer, 20) == false)
+        return false; // 接收服务端的回应报文。
+    // logfile.Write("接收：%s\n",strrecvbuffer);
+
+    return true;
+}
+
+// 文件下载的主函数，执行一次文件下载的任务。
+bool _tcpputfiles()
+{
+    CDir Dir;
+
+    // 调用OpenDir()打开starg.srvpath目录。
+    if (Dir.OpenDir(starg.srvpath, starg.matchname, 10000, starg.andchild) == false)
+    {
+        logfile.Write("Dir.OpenDir(%s) 失败。\n", starg.srvpath);
+        return false;
+    }
+
+    int delayed = 0; // 未收到对端确认报文的文件数量。
+    int buflen = 0;  // 用于存放strrecvbuffer的长度。
+
+    bcontinue = false;
+
+    while (true)
+    {
+        memset(strsendbuffer, 0, sizeof(strsendbuffer));
+        memset(strrecvbuffer, 0, sizeof(strrecvbuffer));
+
+        // 遍历目录中的每个文件，调用ReadDir()获取一个文件名。
+        if (Dir.ReadDir() == false)
+            break;
+
+        bcontinue = true;
+
+        // 把文件名、修改时间、文件大小组成报文，发送给对端。
+        SNPRINTF(strsendbuffer, sizeof(strsendbuffer), 1000, "<filename>%s</filename><mtime>%s</mtime><size>%d</size>", Dir.m_FullFileName, Dir.m_ModifyTime, Dir.m_FileSize);
+
+        // logfile.Write("strsendbuffer=%s\n",strsendbuffer);
+        if (TcpServer.Write(strsendbuffer) == false)
+        {
+            logfile.Write("TcpServer.Write() failed.\n");
+            return false;
+        }
+
+        // 把文件的内容发送给对端。
+        logfile.Write("send %s(%d) ...", Dir.m_FullFileName, Dir.m_FileSize);
+        if (SendFile(TcpServer.m_connfd, Dir.m_FullFileName, Dir.m_FileSize) == true)
+        {
+            logfile.WriteEx("ok.\n");
+            delayed++;
+        }
+        else
+        {
+            logfile.WriteEx("failed.\n");
+            TcpServer.CloseClient();
+            return false;
+        }
+
+        PActive.UptATime();
+
+        // 接收对端的确认报文。
+        while (delayed > 0)
+        {
+            memset(strrecvbuffer, 0, sizeof(strrecvbuffer));
+            if (TcpRead(TcpServer.m_connfd, strrecvbuffer, &buflen, -1) == false)
+                break;
+            // logfile.Write("strrecvbuffer=%s\n",strrecvbuffer);
+
+            // 删除或者转存本地的文件。
+            delayed--;
+            AckMessage(strrecvbuffer);
+        }
+    }
+
+    // 继续接收对端的确认报文。
+    while (delayed > 0)
+    {
+        memset(strrecvbuffer, 0, sizeof(strrecvbuffer));
+        if (TcpRead(TcpServer.m_connfd, strrecvbuffer, &buflen, 10) == false)
+            break;
+        // logfile.Write("strrecvbuffer=%s\n",strrecvbuffer);
+
+        // 删除或者转存本地的文件。
+        delayed--;
+        AckMessage(strrecvbuffer);
+    }
+
+    return true;
+}
+
+// 把文件的内容发送给对端。
+bool SendFile(const int sockfd, const char *filename, const int filesize)
+{
+    int onread = 0;     // 每次调用fread时打算读取的字节数。
+    int bytes = 0;      // 调用一次fread从文件中读取的字节数。
+    char buffer[1000];  // 存放读取数据的buffer。
+    int totalbytes = 0; // 从文件中已读取的字节总数。
+    FILE *fp = NULL;
+
+    // 以"rb"的模式打开文件。
+    if ((fp = fopen(filename, "rb")) == NULL)
+        return false;
+
+    while (true)
+    {
+        memset(buffer, 0, sizeof(buffer));
+
+        // 计算本次应该读取的字节数，如果剩余的数据超过1000字节，就打算读1000字节。
+        if (filesize - totalbytes > 1000)
+            onread = 1000;
+        else
+            onread = filesize - totalbytes;
+
+        // 从文件中读取数据。
+        bytes = fread(buffer, 1, onread, fp);
+
+        // 把读取到的数据发送给对端。
+        if (bytes > 0)
+        {
+            if (Writen(sockfd, buffer, bytes) == false)
+            {
+                fclose(fp);
+                return false;
+            }
+        }
+
+        // 计算文件已读取的字节总数，如果文件已读完，跳出循环。
+        totalbytes = totalbytes + bytes;
+
+        if (totalbytes == filesize)
+            break;
+    }
+
+    fclose(fp);
+
+    return true;
+}
+
+// 删除或者转存本地的文件。
+bool AckMessage(const char *strrecvbuffer)
+{
+    char filename[301];
+    char result[11];
+
+    memset(filename, 0, sizeof(filename));
+    memset(result, 0, sizeof(result));
+
+    GetXMLBuffer(strrecvbuffer, "filename", filename, 300);
+    GetXMLBuffer(strrecvbuffer, "result", result, 10);
+
+    // 如果服务端接收文件不成功，直接返回。
+    if (strcmp(result, "ok") != 0)
+        return true;
+
+    // ptype==1，删除文件。
+    if (starg.ptype == 1)
+    {
+        if (REMOVE(filename) == false)
+        {
+            logfile.Write("REMOVE(%s) failed.\n", filename);
+            return false;
+        }
+    }
+
+    // ptype==2，移动到备份目录。
+    if (starg.ptype == 2)
+    {
+        // 生成转存后的备份目录文件名。
+        char bakfilename[301];
+        STRCPY(bakfilename, sizeof(bakfilename), filename);
+        UpdateStr(bakfilename, starg.srvpath, starg.srvpathbak, false);
+        if (RENAME(filename, bakfilename) == false)
+        {
+            logfile.Write("RENAME(%s,%s) failed.\n", filename, bakfilename);
+            return false;
+        }
+    }
 
     return true;
 }

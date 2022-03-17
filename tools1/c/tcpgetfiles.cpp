@@ -1,6 +1,6 @@
 /*
- * 程序名：tcpgetfiles.cpp，采用tcp协议，实现文件下载的客户端。
- * 作者：吴从周。
+ * 程序名：tcpgetfiles.cpp, 采用tcp协议，实现文件下载的客户端。
+ * 作者：任振华。
  */
 #include "_public.h"
 
@@ -126,8 +126,8 @@ void _help()
     printf("\n");
     printf("Using:/project/tools1/bin/tcpgetfiles logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpgetfiles /log/idc/tcpgetfiles_surfdata.log \"<ip>192.168.174.132</ip><port>5005</port><ptype>1</ptype><srvpath>/tmp/tcp/surfdata2</srvpath><andchild>true</andchild><matchname>*.XML,*.CSV,*.JSON</matchname><clientpath>/tmp/tcp/surfdata3</clientpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpgetfiles_surfdata</pname>\"\n");
-    printf("       /project/tools1/bin/procctl 20 /project/tools1/bin/tcpgetfiles /log/idc/tcpgetfiles_surfdata.log \"<ip>192.168.174.132</ip><port>5005</port><ptype>2</ptype><srvpath>/tmp/tcp/surfdata2</srvpath><srvpathbak>/tmp/tcp/surfdata2bak</srvpathbak><andchild>true</andchild><matchname>*.XML,*.CSV,*.JSON</matchname><clientpath>/tmp/tcp/surfdata3</clientpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpgetfiles_surfdata</pname>\"\n\n\n");
+    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpgetfiles /log/idc/tcpgetfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>1</ptype><srvpath>/tmp/tcp/surfdata2</srvpath><andchild>true</andchild><matchname>*.XML,*.CSV,*.JSON</matchname><clientpath>/tmp/tcp/surfdata3</clientpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpgetfiles_surfdata</pname>\"\n");
+    printf("       /project/tools1/bin/procctl 20 /project/tools1/bin/tcpgetfiles /log/idc/tcpgetfiles_surfdata.log \"<ip>175.178.53.221</ip><port>5005</port><ptype>2</ptype><srvpath>/tmp/tcp/surfdata2</srvpath><srvpathbak>/tmp/tcp/surfdata2bak</srvpathbak><andchild>true</andchild><matchname>*.XML,*.CSV,*.JSON</matchname><clientpath>/tmp/tcp/surfdata3</clientpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpgetfiles_surfdata</pname>\"\n\n\n");
 
     printf("本程序是数据中心的公共功能模块，采用tcp协议从服务端下载文件。\n");
     printf("logfilename   本程序运行的日志文件。\n");
@@ -246,19 +246,19 @@ void _tcpgetfiles()
         PActive.UptATime();
 
         // 接收服务端的报文。
-        // 第二个参数的取值必须大于starg.timetvl，小于starg.timeout。
+        // 第二个参数的取值必须大于starg.timetvl, 小于starg.timeout。
         if (TcpClient.Read(strrecvbuffer, starg.timetvl + 10) == false)
         {
             logfile.Write("TcpClient.Read() failed.\n");
             return;
         }
-        // logfile.Write("strrecvbuffer=%s\n",strrecvbuffer);
+        // logfile.Write("strrecvbuffer=%s\n", strrecvbuffer);
 
         // 处理心跳报文。
         if (strcmp(strrecvbuffer, "<activetest>ok</activetest>") == 0)
         {
             strcpy(strsendbuffer, "ok");
-            // logfile.Write("strsendbuffer=%s\n",strsendbuffer);
+            // logfile.Write("strsendbuffer=%s\n", strsendbuffer);
             if (TcpClient.Write(strsendbuffer) == false)
             {
                 logfile.Write("TcpClient.Write() failed.\n");
@@ -271,8 +271,8 @@ void _tcpgetfiles()
         {
             // 解析下载文件请求报文的xml。
             char serverfilename[301];
-            memset(serverfilename, 0, sizeof(serverfilename));
             char mtime[21];
+            memset(serverfilename, 0, sizeof(serverfilename));
             memset(mtime, 0, sizeof(mtime));
             int filesize = 0;
             GetXMLBuffer(strrecvbuffer, "filename", serverfilename, 300);
@@ -310,7 +310,7 @@ void _tcpgetfiles()
     }
 }
 
-// 接收文件的内容。
+// 接收文件的内容。 
 bool RecvFile(const int sockfd, const char *filename, const char *mtime, int filesize)
 {
     // 生成临时文件名。

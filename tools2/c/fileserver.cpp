@@ -239,13 +239,13 @@ void RecvFilesMain()
             logfile.Write("TcpServer.Read() failed.\n");
             return;
         }
-        // logfile.Write("strrecvbuffer=%s\n",strrecvbuffer);
+        // logfile.Write("strrecvbuffer=%s\n", strrecvbuffer);
 
         // 处理心跳报文。
         if (strcmp(strrecvbuffer, "<activetest>ok</activetest>") == 0)
         {
             strcpy(strsendbuffer, "ok");
-            // logfile.Write("strsendbuffer=%s\n",strsendbuffer);
+            // logfile.Write("strsendbuffer=%s\n", strsendbuffer);
             if (TcpServer.Write(strsendbuffer) == false)
             {
                 logfile.Write("TcpServer.Write() failed.\n");
@@ -287,7 +287,7 @@ void RecvFilesMain()
             }
 
             // 把接收结果返回给对端。
-            // logfile.Write("strsendbuffer=%s\n",strsendbuffer);
+            // logfile.Write("strsendbuffer=%s\n", strsendbuffer);
             if (TcpServer.Write(strsendbuffer) == false)
             {
                 logfile.Write("TcpServer.Write() failed.\n");
