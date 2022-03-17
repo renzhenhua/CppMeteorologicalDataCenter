@@ -8,7 +8,7 @@ PUBCPP = /project/public/_public.cpp
 CFLAGS = -g -std=c++11
 
 
-all:procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver
+all:procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver tcpputfiles4
 
 procctl:procctl.cpp
 		g++ -o procctl procctl.cpp
@@ -38,9 +38,12 @@ tcpputfiles:tcpputfiles.cpp
 	g++ $(CFLAGS) -o tcpputfiles tcpputfiles.cpp $(PUBINCL) $(PUBCPP) -lm -lc
 	cp tcpputfiles ../bin/.
 
+tcpputfiles4:tcpputfiles4.cpp
+	g++ $(CFLAGS) -o tcpputfiles4 tcpputfiles4.cpp $(PUBINCL) $(PUBCPP) -lm -lc
+
 fileserver:fileserver.cpp
 	g++ $(CFLAGS) -o fileserver fileserver.cpp $(PUBINCL) $(PUBCPP) -lm -lc
 	cp fileserver ../bin/.
 
 clean:
-		rm -f procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver
+		rm -f procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver tcpputfiles4

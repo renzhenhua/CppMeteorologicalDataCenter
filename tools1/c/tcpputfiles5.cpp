@@ -1,5 +1,5 @@
 /*
- * 程序名：tcpputfiles.cpp，采用tcp协议，实现文件上传的客户端。
+ * 程序名：tcpputfiles5.cpp，采用tcp协议，实现文件上传的客户端。
  * 作者：吴从周。
  */
 #include "_public.h"
@@ -167,10 +167,10 @@ void _help()
     printf("\n");
     printf("Using:/project/tools1/bin/tcpputfiles logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles /log/idc/tcpputfiles_surfdata.log \"<ip>192.168.174.133</ip><port>5005</port><ptype>1</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><andchild>true</andchild><matchname>*.XML,*.CSV,*.JSON</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n");
+    printf("Sample:/project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles /log/idc/tcpputfiles_surfdata.log \"<ip>192.168.174.133</ip><port>5005</port><ptype>1</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV,*.JSON</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n");
     printf("       /project/tools1/bin/procctl 20 /project/tools1/bin/tcpputfiles /log/idc/tcpputfiles_surfdata.log \"<ip>192.168.174.132</ip><port>5005</port><ptype>2</ptype><clientpath>/tmp/tcp/surfdata1</clientpath><clientpathbak>/tmp/tcp/surfdata1bak</clientpathbak><andchild>true</andchild><matchname>*.XML,*.CSV,*.JSON</matchname><srvpath>/tmp/tcp/surfdata2</srvpath><timetvl>10</timetvl><timeout>50</timeout><pname>tcpputfiles_surfdata</pname>\"\n\n\n");
 
-    printf("本程序是数据中心的公共功能模块，采用tcp协议把文件上传给服务端。\n");
+    printf("本程序是数据中心的公共功能模块，采用tcp协议把文件发送给服务端。\n");
     printf("logfilename   本程序运行的日志文件。\n");
     printf("xmlbuffer     本程序运行的参数，如下：\n");
     printf("ip            服务端的IP地址。\n");
