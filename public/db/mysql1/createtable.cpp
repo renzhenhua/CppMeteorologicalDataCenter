@@ -1,24 +1,24 @@
 /*
- *  ³ÌĞòÃû£ºcreatetable.cpp£¬´Ë³ÌĞòÑİÊ¾¿ª·¢¿ò¼Ü²Ù×÷MySQLÊı¾İ¿â£¨´´½¨±í£©¡£
- *  ×÷Õß£ºÎâ´ÓÖÜ¡£
+ *  ç¨‹åºåï¼šcreatetable.cppï¼Œæ­¤ç¨‹åºæ¼”ç¤ºå¼€å‘æ¡†æ¶æ“ä½œMySQLæ•°æ®åº“ï¼ˆåˆ›å»ºè¡¨ï¼‰ã€‚
+ *  ä½œè€…ï¼šå´ä»å‘¨ã€‚
 */
-#include "_mysql.h"   // ¿ª·¢¿ò¼Ü²Ù×÷MySQLµÄÍ·ÎÄ¼ş¡£
+#include "_mysql.h"   // å¼€å‘æ¡†æ¶æ“ä½œMySQLçš„å¤´æ–‡ä»¶ã€‚
 
 int main(int argc,char *argv[])
 {
-  connection conn; // Êı¾İ¿âÁ¬½ÓÀà
+  connection conn; // æ•°æ®åº“è¿æ¥ç±»
 
-  // µÇÂ¼Êı¾İ¿â£¬·µ»ØÖµ£º0-³É¹¦£¬ÆäËü-Ê§°Ü¡£
-  // Ê§°Ü´úÂëÔÚconn.m_cda.rcÖĞ£¬Ê§°ÜÃèÊöÔÚconn.m_cda.messageÖĞ¡£
+  // ç™»å½•æ•°æ®åº“ï¼Œè¿”å›å€¼ï¼š0-æˆåŠŸï¼Œå…¶å®ƒ-å¤±è´¥ã€‚
+  // å¤±è´¥ä»£ç åœ¨conn.m_cda.rcä¸­ï¼Œå¤±è´¥æè¿°åœ¨conn.m_cda.messageä¸­ã€‚
   if (conn.connecttodb("127.0.0.1,root,mysqlpwd,mysql,3306","gbk") != 0)
   {
     printf("connect database failed.\n%s\n",conn.m_cda.message); return -1;
   }
   
-  sqlstatement stmt(&conn); // ²Ù×÷SQLÓï¾äµÄ¶ÔÏó¡£
+  sqlstatement stmt(&conn); // æ“ä½œSQLè¯­å¥çš„å¯¹è±¡ã€‚
 
-  // ×¼±¸´´½¨±íµÄSQLÓï¾ä¡£
-  // ³¬Å®±ígirls£¬³¬Å®±àºÅid£¬³¬Å®ĞÕÃûname£¬ÌåÖØweight£¬±¨ÃûÊ±¼äbtime£¬³¬Å®ËµÃ÷memo£¬³¬Å®Í¼Æ¬pic¡£
+  // å‡†å¤‡åˆ›å»ºè¡¨çš„SQLè¯­å¥ã€‚
+  // è¶…å¥³è¡¨girlsï¼Œè¶…å¥³ç¼–å·idï¼Œè¶…å¥³å§“ånameï¼Œä½“é‡weightï¼ŒæŠ¥åæ—¶é—´btimeï¼Œè¶…å¥³è¯´æ˜memoï¼Œè¶…å¥³å›¾ç‰‡picã€‚
   stmt.prepare("\
     create table girls(id    bigint(10),\
                        name  varchar(10),\
@@ -27,10 +27,10 @@ int main(int argc,char *argv[])
                        memo  longtext,\
                        pic   longblob,\
                        primary key (id))");
-  // prepare·½·¨²»ĞèÒªÅĞ¶Ï·µ»ØÖµ¡£
+  // prepareæ–¹æ³•ä¸éœ€è¦åˆ¤æ–­è¿”å›å€¼ã€‚
 
-  // Ö´ĞĞSQLÓï¾ä£¬Ò»¶¨ÒªÅĞ¶Ï·µ»ØÖµ£¬0-³É¹¦£¬ÆäËü-Ê§°Ü¡£
-  // Ê§°Ü´úÂëÔÚstmt.m_cda.rcÖĞ£¬Ê§°ÜÃèÊöÔÚstmt.m_cda.messageÖĞ¡£
+  // æ‰§è¡ŒSQLè¯­å¥ï¼Œä¸€å®šè¦åˆ¤æ–­è¿”å›å€¼ï¼Œ0-æˆåŠŸï¼Œå…¶å®ƒ-å¤±è´¥ã€‚
+  // å¤±è´¥ä»£ç åœ¨stmt.m_cda.rcä¸­ï¼Œå¤±è´¥æè¿°åœ¨stmt.m_cda.messageä¸­ã€‚
   if (stmt.execute() != 0)
   {
     printf("stmt.execute() failed.\n%s\n%s\n",stmt.m_sql,stmt.m_cda.message); return -1;
