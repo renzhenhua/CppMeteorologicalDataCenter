@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
         printf("成功修改了%ld条记录。\n", stmt.m_cda.rpc); // stmt.m_cda.rpc是本次执行SQL影响的记录数。
     }
 
-    printf("insert table girls ok.\n");
+    printf("update table girls ok.\n");
 
     conn.commit(); // 提交数据库事务。
 
