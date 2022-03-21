@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     stmt.bindin(4, stgirls.btime, 19);
 
     // 模拟超女数据，向表中插入5条测试数据。
-    for (int ii = 0; ii < 5; ii++)
+    for (int ii = 0; ii < 2; ii++)
     {
         memset(&stgirls, 0, sizeof(struct st_girls)); // 结构体变量初始化。
 

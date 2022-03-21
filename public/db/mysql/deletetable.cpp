@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     stmt.bindin(2, &imaxid);
 
     iminid = 1; // 指定待删除记录的最小id的值。
-    imaxid = 3; // 指定待删除记录的最大id的值。
+    imaxid = 2; // 指定待删除记录的最大id的值。
 
     // 执行SQL语句，一定要判断返回值，0-成功，其它-失败。
     // 失败代码在stmt.m_cda.rc中，失败描述在stmt.m_cda.message中。

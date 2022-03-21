@@ -1,5 +1,5 @@
 /*
- *  程序名：filetoblob.cpp，此程序演示开发框架操作MySQL数据库（把图片文件存入BLOB字段）。
+ *  程序名：filetoblob.cpp，此程序演示开发框架操作MySQL数据库（把图片文件存入BLOG字段）。
  *  作者：任振华。
  */
 
@@ -9,9 +9,9 @@ int main(int argc, char *argv[])
 {
     connection conn; // 数据库连接类。
 
-    // 登录数据库，返回值：0-成功；其它是失败，存放了MySQL的错误代码。
+    // 登录数据库，返回值：0-成功，其它-失败。
     // 失败代码在conn.m_cda.rc中，失败描述在conn.m_cda.message中。
-    if (conn.connecttodb("127.0.0.1,root,mysqlpwd,mysql,3306", "utf8") != 0)
+    if (conn.connecttodb("127.0.0.1,root,123456,ren,3306", "utf8") != 0)
     {
         printf("connect database failed.\n%s\n", conn.m_cda.message);
         return -1;
@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     struct st_girls
     {
         long id;               // 超女编号
-        char pic[100000];      // 超女图片的内容。
+        char pic[100000];      // 超女图片内容
         unsigned long picsize; // 图片内容占用的字节数。
     } stgirls;
 
