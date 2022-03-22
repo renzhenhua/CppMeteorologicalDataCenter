@@ -1,6 +1,6 @@
 /*
- *  obtcodetodb.cpp，本程序用于把全国站点参数数据保存到数据库T_ZHOBTCODE表中。
- *  作者：吴从周。
+ *程序名：obtcodetodb.cpp 本程序用于生成全国气象站点观察的分钟数据。
+ *作者：任振华。
  */
 #include "_public.h"
 #include "_mysql.h"
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         printf("\n");
         printf("Using:./obtcodetodb inifile connstr charset logfile\n");
 
-        printf("Example:/project/tools1/bin/procctl 120 /project/idc1/bin/obtcodetodb /project/idc/ini/stcode.ini \"127.0.0.1,root,mysqlpwd,mysql,3306\" utf8 /log/idc/obtcodetodb.log\n\n");
+        printf("Example:/project/tools1/bin/procctl 120 /project/idc1/bin/obtcodetodb /project/idc/ini/stcode.ini \"127.0.0.1,root,123456,ren,3306\" utf8 /log/idc/obtcodetodb.log\n\n");
 
         printf("本程序用于把全国站点参数数据保存到数据库表中，如果站点不存在则插入，站点已存在则更新。\n");
         printf("inifile 站点参数文件名（全路径）。\n");
@@ -103,7 +103,6 @@ int main(int argc, char *argv[])
     stmtupt.bindin(4, stcode.lon, 10);
     stmtupt.bindin(5, stcode.height, 10);
     stmtupt.bindin(6, stcode.obtid, 10);
-    // 抄以上代码的时候要小心，经常有人在这里栽跟斗。
 
     int inscount = 0, uptcount = 0;
     CTimer Timer;
@@ -144,8 +143,6 @@ int main(int argc, char *argv[])
 
     // 提交事务。
     conn.commit();
-
-    return 0;
 }
 
 // 把站点参数文件中加载到vstcode容器中。
