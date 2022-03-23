@@ -16,7 +16,118 @@ struct st_zhobtmind
     char wf[11];        // 风速：单位0.1m/s。
     char r[11];         // 降雨量：0.1mm。
     char vis[11];       // 能见度：0.1米。
-} stzhobtmind;
+};
+
+// 全国站点分钟观测数据操作类。
+class CZHOBTMIND
+{
+public:
+    connection *m_conn;  // 数据库连接。
+    CLogFile *m_logfile; // 日志。
+
+    sqlstatement m_stmt; // 插入表操作的sql。
+
+    char m_buffer[1024];             // 从文件中读到的一行。
+    struct st_zhobtmind m_zhobtmind; // 全国站点分钟观测数据结构。
+
+    CZHOBTMIND();
+    CZHOBTMIND(connection *conn, CLogFile *logfile);
+
+    ~CZHOBTMIND();
+
+    void BindConnLog(connection *conn, CLogFile *logfile); // 把connection和CLogFile的传进去。
+    bool SplitBuffer(char *strBuffer);                     // 把从文件读到的一行数据拆分到m_zhobtmind结构体中。
+    bool InsertTable();                                    // 把m_zhobtmind结构体中的数据插入到T_ZHOBTMIND表中。
+};
+
+CZHOBTMIND::CZHOBTMIND()
+{
+    m_conn = 0;
+    m_logfile = 0;
+}
+
+CZHOBTMIND::CZHOBTMIND(connection *conn, CLogFile *logfile)
+{
+    m_conn = conn;
+    m_logfile = logfile;
+}
+
+CZHOBTMIND::~CZHOBTMIND()
+{
+}
+
+void CZHOBTMIND::BindConnLog(connection *conn, CLogFile *logfile)
+{
+    m_conn = conn;
+    m_logfile = logfile;
+}
+
+// 把从文件读到的一行数据拆分到m_zhobtmind结构体中。
+bool CZHOBTMIND::SplitBuffer(char *strBuffer)
+{
+    memset(&m_zhobtmind, 0, sizeof(struct st_zhobtmind));
+    GetXMLBuffer(strBuffer, "obtid", m_zhobtmind.obtid, 10);
+    GetXMLBuffer(strBuffer, "ddatetime", m_zhobtmind.ddatetime, 14);
+    char tmp[11];
+    GetXMLBuffer(strBuffer, "t", tmp, 10);
+    if (strlen(tmp) > 0)
+        snprintf(m_zhobtmind.t, 10, "%d", (int)(atof(tmp) * 10));
+    GetXMLBuffer(strBuffer, "p", tmp, 10);
+    if (strlen(tmp) > 0)
+        snprintf(m_zhobtmind.p, 10, "%d", (int)(atof(tmp) * 10));
+    GetXMLBuffer(strBuffer, "u", m_zhobtmind.u, 10);
+    GetXMLBuffer(strBuffer, "wd", m_zhobtmind.wd, 10);
+    GetXMLBuffer(strBuffer, "wf", tmp, 10);
+    if (strlen(tmp) > 0)
+        snprintf(m_zhobtmind.wf, 10, "%d", (int)(atof(tmp) * 10));
+    GetXMLBuffer(strBuffer, "r", tmp, 10);
+    if (strlen(tmp) > 0)
+        snprintf(m_zhobtmind.r, 10, "%d", (int)(atof(tmp) * 10));
+    GetXMLBuffer(strBuffer, "vis", tmp, 10);
+    if (strlen(tmp) > 0)
+        snprintf(m_zhobtmind.vis, 10, "%d", (int)(atof(tmp) * 10));
+
+    STRCPY(m_buffer, sizeof(m_buffer), strBuffer);
+
+    return true;
+}
+
+// 把m_zhobtmind结构体中的数据插入到T_ZHOBTMIND表中。
+bool CZHOBTMIND::InsertTable()
+{
+    if (m_stmt.m_state == 0)
+    {
+        m_stmt.connect(m_conn);
+        m_stmt.prepare("insert into T_ZHOBTMIND(obtid,ddatetime,t,p,u,wd,wf,r,vis) values(:1,str_to_date(:2,'%%Y%%m%%d%%H%%i%%s'),:3,:4,:5,:6,:7,:8,:9)");
+        m_stmt.bindin(1, m_zhobtmind.obtid, 10);
+        m_stmt.bindin(2, m_zhobtmind.ddatetime, 14);
+        m_stmt.bindin(3, m_zhobtmind.t, 10);
+        m_stmt.bindin(4, m_zhobtmind.p, 10);
+        m_stmt.bindin(5, m_zhobtmind.u, 10);
+        m_stmt.bindin(6, m_zhobtmind.wd, 10);
+        m_stmt.bindin(7, m_zhobtmind.wf, 10);
+        m_stmt.bindin(8, m_zhobtmind.r, 10);
+        m_stmt.bindin(9, m_zhobtmind.vis, 10);
+    }
+
+    // 把结构体中的数据插入表中。
+    if (m_stmt.execute() != 0)
+    {
+        // 1、失败的情况有哪些？是否全部的失败都要写日志？
+        // 答：失败的原因主要有二：一是记录重复，二是数据内容非法。
+        // 2、如果失败了怎么办？程序是否需要继续？是否rollback？是否返回false？
+        // 答：如果失败的原因是数据内容非法，记录日志后继续；如果是记录重复，不必记录日志，且继续。
+        if (m_stmt.m_cda.rc != 1062)
+        {
+            m_logfile->Write("Buffer=%s\n", m_buffer);
+            m_logfile->Write("m_stmt.execute() failed.\n%s\n%s\n", m_stmt.m_sql, m_stmt.m_cda.message);
+        }
+
+        return false;
+    }
+
+    return true;
+}
 
 CLogFile logfile;
 
@@ -85,7 +196,6 @@ void EXIT(int sig)
 // 业务处理主函数。
 bool _obtmindtodb(char *pathname, char *connstr, char *charset)
 {
-    sqlstatement stmt;
 
     CDir Dir;
 
@@ -97,6 +207,12 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
     }
 
     CFile File;
+
+    CZHOBTMIND ZHOBTMIND(&conn, &logfile);
+
+    int totalcount = 0;  // 文件的总记录数。
+    int insertcount = 0; // 成功插入记录数。
+    CTimer Timer;        // 计时器，记录每个数据文件的处理耗时。
 
     while (true)
     {
@@ -115,24 +231,7 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
 
             logfile.Write("connect database(%s) ok.\n", connstr);
         }
-
-        if (stmt.m_state == 0)
-        {
-            stmt.connect(&conn);
-            stmt.prepare("insert into T_ZHOBTMIND(obtid,ddatetime,t,p,u,wd,wf,r,vis) values(:1,str_to_date(:2,'%%Y%%m%%d%%H%%i%%s'),:3,:4,:5,:6,:7,:8,:9)");
-            stmt.bindin(1, stzhobtmind.obtid, 10);
-            stmt.bindin(2, stzhobtmind.ddatetime, 14);
-            stmt.bindin(3, stzhobtmind.t, 10);
-            stmt.bindin(4, stzhobtmind.p, 10);
-            stmt.bindin(5, stzhobtmind.u, 10);
-            stmt.bindin(6, stzhobtmind.wd, 10);
-            stmt.bindin(7, stzhobtmind.wf, 10);
-            stmt.bindin(8, stzhobtmind.r, 10);
-            stmt.bindin(9, stzhobtmind.vis, 10);
-        }
-
-        logfile.Write("filename=%s\n", Dir.m_FullFileName);
-
+        totalcount = insertcount = 0;
         // 打开文件。
         if (File.Open(Dir.m_FullFileName, "r") == false)
         {
@@ -146,52 +245,22 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
         {
             if (File.FFGETS(strBuffer, 1000, "<endl/>") == false)
                 break;
-            logfile.Write("strBuffer=%s", strBuffer);
 
             // 处理文件中的每一行。
-            memset(&stzhobtmind, 0, sizeof(struct st_zhobtmind));
-            GetXMLBuffer(strBuffer, "obtid", stzhobtmind.obtid, 10);
-            GetXMLBuffer(strBuffer, "ddatetime", stzhobtmind.ddatetime, 14);
-            char tmp[11];
-            GetXMLBuffer(strBuffer, "t", tmp, 10);
-            if (strlen(tmp) > 0)
-                snprintf(stzhobtmind.t, 10, "%d", (int)(atof(tmp) * 10));
-            GetXMLBuffer(strBuffer, "p", tmp, 10);
-            if (strlen(tmp) > 0)
-                snprintf(stzhobtmind.p, 10, "%d", (int)(atof(tmp) * 10));
-            GetXMLBuffer(strBuffer, "u", stzhobtmind.u, 10);
-            GetXMLBuffer(strBuffer, "wd", stzhobtmind.wd, 10);
-            GetXMLBuffer(strBuffer, "wf", tmp, 10);
-            if (strlen(tmp) > 0)
-                snprintf(stzhobtmind.wf, 10, "%d", (int)(atof(tmp) * 10));
-            GetXMLBuffer(strBuffer, "r", tmp, 10);
-            if (strlen(tmp) > 0)
-                snprintf(stzhobtmind.r, 10, "%d", (int)(atof(tmp) * 10));
-            GetXMLBuffer(strBuffer, "vis", tmp, 10);
-            if (strlen(tmp) > 0)
-                snprintf(stzhobtmind.vis, 10, "%d", (int)(atof(tmp) * 10));
+            totalcount++;
 
-            logfile.Write("obtid=%s,ddatetime=%s,t=%s,p=%s,u=%s,wd=%s,wf=%s,r=%s,vis=%s\n", stzhobtmind.obtid, stzhobtmind.ddatetime, stzhobtmind.t, stzhobtmind.p, stzhobtmind.u, stzhobtmind.wd, stzhobtmind.wf, stzhobtmind.r, stzhobtmind.vis);
+            ZHOBTMIND.SplitBuffer(strBuffer);
 
-            // 把结构体中的数据插入表中。
-            if (stmt.execute() != 0)
-            {
-                // 1、失败的情况有哪些？是否全部的失败都要写日志？
-                // 答：失败的原因主要有二：一是记录重复，二是数据内容非法。
-                // 2、如果失败了怎么办？程序是否需要继续？是否rollback？是否返回false？
-                // 答：如果失败的原因是数据内容非法，记录日志后继续；如果是记录重复，不必记录日志，且继续。
-                if (stmt.m_cda.rc != 1062)
-                {
-                    logfile.Write("Buffer=%s\n", strBuffer);
-                    logfile.Write("stmt.execute() failed.\n%s\n%s\n", stmt.m_sql, stmt.m_cda.message);
-                }
-            }
+            if (ZHOBTMIND.InsertTable() == true)
+                insertcount++;
         }
-        
+
         // 删除文件、提交事务。
         // File.CloseAndRemove();
 
         conn.commit();
+
+        logfile.Write("已处理文件%s（totalcount=%d,insertcount=%d），耗时%.2f秒。\n", Dir.m_FullFileName, totalcount, insertcount, Timer.Elapsed());
     }
 
     return true;

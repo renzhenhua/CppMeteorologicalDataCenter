@@ -1,6 +1,6 @@
 /*
- *  obtmindtodb.cpp，本程序用于把全国站点分钟观测数据入库到T_ZHOBTMIND表中，支持xml和csv两种文件格式。
- *  作者：吴从周。
+ *程序名：obtmindtodb.cpp,本程序用于把全国站点分钟观测数据入库到T_ZHOBTMIND表中，支持xml和csv两种文件格式。
+ *作者：任振华。
  */
 #include "_public.h"
 #include "_mysql.h"
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         printf("\n");
         printf("Using:./obtmindtodb pathname connstr charset logfile\n");
 
-        printf("Example:/project/tools1/bin/procctl 10 /project/idc1/bin/obtmindtodb /idcdata/surfdata \"127.0.0.1,root,mysqlpwd,mysql,3306\" utf8 /log/idc/obtmindtodb.log\n\n");
+        printf("Example:/project/tools1/bin/procctl 10 /project/idc1/bin/obtmindtodb /idcdata/surfdata \"127.0.0.1,root,123456,ren,3306\" utf8 /log/idc/obtmindtodb.log\n\n");
 
         printf("本程序用于把全国站点分钟观测数据保存到数据库的T_ZHOBTMIND表中，数据只插入，不更新。\n");
         printf("pathname 全国站点分钟观测数据文件存放的目录。\n");
@@ -135,10 +135,8 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
             stmt.bindin(9, stzhobtmind.vis, 10);
         }
 
-        // logfile.Write("filename=%s\n",Dir.m_FullFileName);
-
+        // logfile.Write("filename=%s\n", Dir.m_FullFileName);
         totalcount = insertcount = 0;
-
         // 打开文件。
         if (File.Open(Dir.m_FullFileName, "r") == false)
         {
@@ -152,7 +150,7 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
         {
             if (File.FFGETS(strBuffer, 1000, "<endl/>") == false)
                 break;
-            // logfile.Write("strBuffer=%s",strBuffer);
+            // logfile.Write("strBuffer=%s", strBuffer);
 
             // 处理文件中的每一行。
             totalcount++;
@@ -178,7 +176,7 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
             if (strlen(tmp) > 0)
                 snprintf(stzhobtmind.vis, 10, "%d", (int)(atof(tmp) * 10));
 
-            // logfile.Write("obtid=%s,ddatetime=%s,t=%s,p=%s,u=%s,wd=%s,wf=%s,r=%s,vis=%s\n",stzhobtmind.obtid,stzhobtmind.ddatetime,stzhobtmind.t,stzhobtmind.p,stzhobtmind.u,stzhobtmind.wd,stzhobtmind.wf,stzhobtmind.r,stzhobtmind.vis);
+            // logfile.Write("obtid=%s,ddatetime=%s,t=%s,p=%s,u=%s,wd=%s,wf=%s,r=%s,vis=%s\n", stzhobtmind.obtid, stzhobtmind.ddatetime, stzhobtmind.t, stzhobtmind.p, stzhobtmind.u, stzhobtmind.wd, stzhobtmind.wf, stzhobtmind.r, stzhobtmind.vis);
 
             // 把结构体中的数据插入表中。
             if (stmt.execute() != 0)
@@ -201,7 +199,6 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
         // File.CloseAndRemove();
 
         conn.commit();
-
         logfile.Write("已处理文件%s（totalcount=%d,insertcount=%d），耗时%.2f秒。\n", Dir.m_FullFileName, totalcount, insertcount, Timer.Elapsed());
     }
 
