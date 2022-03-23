@@ -20,7 +20,7 @@ MYSQLCPP = /project/public/db/mysql/_mysql.cpp
 CFLAGS = -g -std=c++11
 
 all:crtsurfdata1 crtsurfdata2 crtsurfdata3 crtsurfdata4 crtsurfdata5 crtsurfdata\
-	obtcodetodb
+	obtcodetodb obtmindtodb
 
 crtsurfdata1:crtsurfdata1.cpp
 	g++ $(CFLAGS) -o crtsurfdata1 crtsurfdata1.cpp $(PUBINCL) $(PUBCPP) -lm -lc
@@ -50,6 +50,10 @@ obtcodetodb:obtcodetodb.cpp
 	g++ $(CFLAGS) -o obtcodetodb obtcodetodb.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
 	cp obtcodetodb ../bin/.
 
+obtmindtodb:obtmindtodb.cpp
+	g++ $(CFLAGS) -o obtmindtodb obtmindtodb.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
+	cp obtmindtodb ../bin/.
+
 clean:
 	rm -f crtsurfdata1 crtsurfdata2 crtsurfdata3 crtsurfdata4 crtsurfdata5 crtsurfdata obtcodetodb
-	rm -f obtcodetodb
+	rm -f obtcodetodb obtmindtodb

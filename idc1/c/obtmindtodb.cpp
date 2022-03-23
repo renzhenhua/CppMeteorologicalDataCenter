@@ -1,9 +1,12 @@
 /*
- *  obtmindtodb.cpp，本程序用于把全国站点分钟观测数据入库到T_ZHOBTMIND表中，支持xml和csv两种文件格式。
- *  作者：吴从周。
+ *程序名：obtmindtodb.cpp,本程序用于把全国站点分钟观测数据入库到T_ZHOBTMIND表中，支持xml和csv两种文件格式。
+ *作者：任振华。
  */
 #include "_public.h"
 #include "_mysql.h"
+
+// 把站点参数文件中加载到vstcode容器中。
+bool LoadSTCode(const char *inifile);
 
 CLogFile logfile;
 
@@ -24,7 +27,7 @@ int main(int argc, char *argv[])
         printf("\n");
         printf("Using:./obtmindtodb pathname connstr charset logfile\n");
 
-        printf("Example:/project/tools1/bin/procctl 10 /project/idc1/bin/obtmindtodb /idcdata/surfdata \"127.0.0.1,root,mysqlpwd,mysql,3306\" utf8 /log/idc/obtmindtodb.log\n\n");
+        printf("Example:/project/tools1/bin/procctl 10 /project/idc1/bin/obtmindtodb /idcdata/surfdata \"127.0.0.1,root,123456,ren,3306\" utf8 /log/idc/obtmindtodb.log\n\n");
 
         printf("本程序用于把全国站点分钟观测数据保存到数据库的T_ZHOBTMIND表中，数据只插入，不更新。\n");
         printf("pathname 全国站点分钟观测数据文件存放的目录。\n");

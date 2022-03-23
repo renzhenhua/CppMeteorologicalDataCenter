@@ -1,5 +1,5 @@
 /*
- *程序名：obtcodetodb.cpp 本程序用于生成全国气象站点观察的分钟数据。
+ *程序名：obtcodetodb.cpp，本程序用于把全国站点参数数据保存到数据库T_ZHOBTCODE表中。
  *作者：任振华。
  */
 #include "_public.h"
