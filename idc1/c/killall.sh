@@ -4,9 +4,9 @@
 
 killall -9 procctl
 killall gzipfiles crtsurfdata deletefiles ftpgetfiles ftpputfiles tcpputfiles tcpgetfiles fileserver
-killall obtcodetodb
+killall obtcodetodb obtmindtodbb execsql
 
 sleep 3
 
 killall -9 gzipfiles crtsurfdata deletefiles ftpgetfiles ftpputfiles tcpputfiles tcpgetfiles fileserver
-killall -9 obtcodetodb
+killall -9 obtcodetodb obtmindtodbb execsql
