@@ -1,6 +1,6 @@
 /*
  *  程序名：dminingmysql.cpp，本程序是数据中心的公共功能模块，用于从mysql数据库源表抽取数据，生成xml文件。
- *  作者：吴从周。
+ *  作者：任振华。
  */
 #include "_public.h"
 #include "_mysql.h"
@@ -24,7 +24,7 @@ struct st_arg
 } starg;
 
 #define MAXFIELDCOUNT 100 // 结果集字段的最大数。
-//#define MAXFIELDLEN    500  // 结果集字段值的最大长度。
+// #define MAXFIELDLEN 500   // 结果集字段值的最大长度。
 int MAXFIELDLEN = -1; // 结果集字段值的最大长度，存放fieldlen数组中元素的最大值。
 
 char strfieldname[MAXFIELDCOUNT][31]; // 结果集字段名数组，从starg.fieldstr解析得到。
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     if (instarttime() == false)
         return 0;
 
-    // PActive.AddPInfo(starg.timeout,starg.pname);  // 把进程的心跳信息写入共享内存。
+    // PActive.AddPInfo(starg.timeout, starg.pname); // 把进程的心跳信息写入共享内存。
     // 注意，在调试程序的时候，可以启用类似以下的代码，防止超时。
     PActive.AddPInfo(5000, starg.pname);
 
@@ -144,8 +144,8 @@ void _help()
 {
     printf("Using:/project/tools1/bin/dminingmysql logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTCODE.log \"<connstr>127.0.0.1,root,mysqlpwd,mysql,3306</connstr><charset>utf8</charset><selectsql>select obtid,cityname,provname,lat,lon,height from T_ZHOBTCODE</selectsql><fieldstr>obtid,cityname,provname,lat,lon,height</fieldstr><fieldlen>10,30,30,10,10,10</fieldlen><bfilename>ZHOBTCODE</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><timeout>30</timeout><pname>dminingmysql_ZHOBTCODE</pname>\"\n\n");
-    printf("       /project/tools1/bin/procctl   30 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTMIND.log \"<connstr>127.0.0.1,root,mysqlpwd,mysql,3306</connstr><charset>utf8</charset><selectsql>select obtid,date_format(ddatetime,'%%%%Y-%%%%m-%%%%d %%%%H:%%%%i:%%%%s'),t,p,u,wd,wf,r,vis,keyid from t_zhobtmind where keyid>:1 and ddatetime>timestampadd(minute,-120,now())</selectsql><fieldstr>obtid,ddatetime,t,p,u,wd,wf,r,vis,keyid</fieldstr><fieldlen>10,19,8,8,8,8,8,8,8,15</fieldlen><bfilename>ZHOBTMIND</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><starttime></starttime><incfield>keyid</incfield><incfilename>/idcdata/dmining/dminingmysql_ZHOBTMIND_HYCZ.list</incfilename><timeout>30</timeout><pname>dminingmysql_ZHOBTMIND_HYCZ</pname>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTCODE.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,cityname,provname,lat,lon,height from T_ZHOBTCODE</selectsql><fieldstr>obtid,cityname,provname,lat,lon,height</fieldstr><fieldlen>10,30,30,10,10,10</fieldlen><bfilename>ZHOBTCODE</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><timeout>30</timeout><pname>dminingmysql_ZHOBTCODE</pname>\"\n\n");
+    printf("       /project/tools1/bin/procctl   30 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTMIND.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,date_format(ddatetime,'%%%%Y-%%%%m-%%%%d %%%%H:%%%%i:%%%%s'),t,p,u,wd,wf,r,vis,keyid from t_zhobtmind where keyid>:1 and ddatetime>timestampadd(minute,-120,now())</selectsql><fieldstr>obtid,ddatetime,t,p,u,wd,wf,r,vis,keyid</fieldstr><fieldlen>10,19,8,8,8,8,8,8,8,15</fieldlen><bfilename>ZHOBTMIND</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><starttime></starttime><incfield>keyid</incfield><incfilename>/idcdata/dmining/dminingmysql_ZHOBTMIND_HYCZ.list</incfilename><timeout>30</timeout><pname>dminingmysql_ZHOBTMIND_HYCZ</pname>\"\n\n");
 
     printf("本程序是数据中心的公共功能模块，用于从mysql数据库源表抽取数据，生成xml文件。\n");
     printf("logfilename 本程序运行的日志文件。\n");
@@ -250,7 +250,6 @@ bool _xmltoarg(char *strxmlbuffer)
         return false;
     }
 
-    // 1、把starg.fieldlen解析到ifieldlen数组中；
     CCmdStr CmdStr;
 
     // 1、把starg.fieldlen解析到ifieldlen数组中；

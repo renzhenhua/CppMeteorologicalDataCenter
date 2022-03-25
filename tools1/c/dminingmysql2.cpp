@@ -1,6 +1,6 @@
 /*
  *  程序名：dminingmysql.cpp，本程序是数据中心的公共功能模块，用于从mysql数据库源表抽取数据，生成xml文件。
- *  作者：吴从周。
+ *  作者：任振华。
  */
 #include "_public.h"
 #include "_mysql.h"
@@ -24,15 +24,12 @@ struct st_arg
 } starg;
 
 #define MAXFIELDCOUNT 100 // 结果集字段的最大数。
-//#define MAXFIELDLEN    500  // 结果集字段值的最大长度。
-int MAXFIELDLEN = -1; // 结果集字段值的最大长度，存放fieldlen数组中元素的最大值。
+#define MAXFIELDLEN 500   // 结果集字段值的最大长度。
 
 char strfieldname[MAXFIELDCOUNT][31]; // 结果集字段名数组，从starg.fieldstr解析得到。
 int ifieldlen[MAXFIELDCOUNT];         // 结果集字段的长度数组，从starg.fieldlen解析得到。
 int ifieldcount;                      // strfieldname和ifieldlen数组中有效字段的个数。
 int incfieldpos = -1;                 // 递增字段在结果集数组中的位置。
-
-connection conn;
 
 CLogFile logfile;
 
@@ -44,10 +41,7 @@ void _help();
 // 把xml解析到参数starg结构中。
 bool _xmltoarg(char *strxmlbuffer);
 
-// 判断当前时间是否在程序运行的时间区间内。
-bool instarttime();
-
-// 数据抽取的主函数。
+// 上传文件功能的主函数。
 bool _dminingmysql();
 
 CPActive PActive; // 进程心跳。
@@ -78,57 +72,18 @@ int main(int argc, char *argv[])
     if (_xmltoarg(argv[2]) == false)
         return -1;
 
-    // 判断当前时间是否在程序运行的时间区间内。
-    if (instarttime() == false)
-        return 0;
+    PActive.AddPInfo(starg.timeout, starg.pname); // 把进程的心跳信息写入共享内存。
 
-    // PActive.AddPInfo(starg.timeout,starg.pname);  // 把进程的心跳信息写入共享内存。
-    // 注意，在调试程序的时候，可以启用类似以下的代码，防止超时。
-    PActive.AddPInfo(5000, starg.pname);
-
-    // 连接数据库。
-    if (conn.connecttodb(starg.connstr, starg.charset) != 0)
-    {
-        logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn.m_cda.message);
-        return -1;
-    }
-
-    logfile.Write("connect database(%s) ok.\n", starg.connstr);
+    // logfile.Write("ftp.login ok.\n");  // 正式运行后，可以注释这行代码。
 
     _dminingmysql();
 
     return 0;
 }
 
-// 数据抽取的主函数。
+// 上传文件功能的主函数。
 bool _dminingmysql()
 {
-    sqlstatement stmt(&conn);
-    stmt.prepare(starg.selectsql);
-    char strfieldvalue[ifieldcount][MAXFIELDLEN + 1]; // 抽取数据的SQL执行后，存放结果集字段值的数组。
-    for (int ii = 1; ii <= ifieldcount; ii++)
-    {
-        stmt.bindout(ii, strfieldvalue[ii - 1], ifieldlen[ii - 1]);
-    }
-
-    if (stmt.execute() != 0)
-    {
-        logfile.Write("stmt.execute() failed.\n%s\n%s\n", stmt.m_sql, stmt.m_cda.message);
-        return false;
-    }
-
-    while (true)
-    {
-        memset(strfieldvalue, 0, sizeof(strfieldvalue));
-
-        if (stmt.next() != 0)
-            break;
-
-        for (int ii = 1; ii <= ifieldcount; ii++)
-            logfile.WriteEx("<%s>%s</%s>", strfieldname[ii - 1], strfieldvalue[ii - 1], strfieldname[ii - 1]);
-
-        logfile.WriteEx("<endl/>\n");
-    }
 
     return true;
 }
@@ -144,8 +99,8 @@ void _help()
 {
     printf("Using:/project/tools1/bin/dminingmysql logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTCODE.log \"<connstr>127.0.0.1,root,mysqlpwd,mysql,3306</connstr><charset>utf8</charset><selectsql>select obtid,cityname,provname,lat,lon,height from T_ZHOBTCODE</selectsql><fieldstr>obtid,cityname,provname,lat,lon,height</fieldstr><fieldlen>10,30,30,10,10,10</fieldlen><bfilename>ZHOBTCODE</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><timeout>30</timeout><pname>dminingmysql_ZHOBTCODE</pname>\"\n\n");
-    printf("       /project/tools1/bin/procctl   30 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTMIND.log \"<connstr>127.0.0.1,root,mysqlpwd,mysql,3306</connstr><charset>utf8</charset><selectsql>select obtid,date_format(ddatetime,'%%%%Y-%%%%m-%%%%d %%%%H:%%%%i:%%%%s'),t,p,u,wd,wf,r,vis,keyid from t_zhobtmind where keyid>:1 and ddatetime>timestampadd(minute,-120,now())</selectsql><fieldstr>obtid,ddatetime,t,p,u,wd,wf,r,vis,keyid</fieldstr><fieldlen>10,19,8,8,8,8,8,8,8,15</fieldlen><bfilename>ZHOBTMIND</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><starttime></starttime><incfield>keyid</incfield><incfilename>/idcdata/dmining/dminingmysql_ZHOBTMIND_HYCZ.list</incfilename><timeout>30</timeout><pname>dminingmysql_ZHOBTMIND_HYCZ</pname>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTCODE.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,cityname,provname,lat,lon,height from T_ZHOBTCODE</selectsql><fieldstr>obtid,cityname,provname,lat,lon,height</fieldstr><fieldlen>10,30,30,10,10,10</fieldlen><bfilename>ZHOBTCODE</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath>\"\n\n");
+    printf("       /project/tools1/bin/procctl   30 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTMIND.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,date_format(ddatetime,'%%%%Y-%%%%m-%%%%d %%%%H:%%%%i:%%%%s'),t,p,u,wd,wf,r,vis,keyid from t_zhobtmind where keyid>:1 and ddatetime>timestampadd(minute,-120,now())</selectsql><fieldstr>obtid,ddatetime,t,p,u,wd,wf,r,vis,keyid</fieldstr><fieldlen>10,19,8,8,8,8,8,8,8,15</fieldlen><bfilename>ZHOBTMIND</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><starttime></starttime><incfield>keyid</incfield><incfilename>/idcdata/dmining/dminingmysql_ZHOBTMIND_HYCZ.list</incfilename><timeout>30</timeout><pname>dminingmysql_ZHOBTMIND_HYCZ</pname>\"\n\n");
 
     printf("本程序是数据中心的公共功能模块，用于从mysql数据库源表抽取数据，生成xml文件。\n");
     printf("logfilename 本程序运行的日志文件。\n");
@@ -250,7 +205,6 @@ bool _xmltoarg(char *strxmlbuffer)
         return false;
     }
 
-    // 1、把starg.fieldlen解析到ifieldlen数组中；
     CCmdStr CmdStr;
 
     // 1、把starg.fieldlen解析到ifieldlen数组中；
@@ -266,9 +220,6 @@ bool _xmltoarg(char *strxmlbuffer)
     for (int ii = 0; ii < CmdStr.CmdCount(); ii++)
     {
         CmdStr.GetValue(ii, &ifieldlen[ii]);
-        // if (ifieldlen[ii]>MAXFIELDLEN) ifieldlen[ii]=MAXFIELDLEN;   // 字段的长度不能超过MAXFIELDLEN。
-        if (ifieldlen[ii] > MAXFIELDLEN)
-            MAXFIELDLEN = ifieldlen[ii]; // 得到字段长度的最大值。
     }
 
     ifieldcount = CmdStr.CmdCount();
@@ -310,22 +261,6 @@ bool _xmltoarg(char *strxmlbuffer)
             logfile.Write("递增字段名%s不在列表%s中。\n", starg.incfield, starg.fieldstr);
             return false;
         }
-    }
-
-    return true;
-}
-
-// 判断当前时间是否在程序运行的时间区间内。
-bool instarttime()
-{
-    // 程序运行的时间区间，例如02,13表示：如果程序启动时，踏中02时和13时则运行，其它时间不运行。
-    if (strlen(starg.starttime) != 0)
-    {
-        char strHH24[3];
-        memset(strHH24, 0, sizeof(strHH24));
-        LocalTime(strHH24, "hh24"); // 只获取当前时间中的小时。
-        if (strstr(starg.starttime, strHH24) == 0)
-            return false;
     }
 
     return true;
