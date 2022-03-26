@@ -16,9 +16,11 @@ struct st_arg
     char bfilename[31];    // 输出xml文件的前缀。
     char efilename[31];    // 输出xml文件的后缀。
     char outpath[301];     // 输出xml文件存放的目录。
+    int maxcount;          // 输出xml文件最大记录数，0表示无限制。
     char starttime[52];    // 程序运行的时间区间
     char incfield[31];     // 递增字段名。
     char incfilename[301]; // 已抽取数据的递增字段最大值存放的文件。
+    char connstr1[101];    // 已抽取数据的递增字段最大值存放的数据库的连接参数。
     int timeout;           // 进程心跳的超时时间。
     char pname[51];        // 进程名，建议用"dminingmysql_后缀"的方式。
 } starg;
@@ -32,7 +34,7 @@ int ifieldlen[MAXFIELDCOUNT];         // 结果集字段的长度数组，从sta
 int ifieldcount;                      // strfieldname和ifieldlen数组中有效字段的个数。
 int incfieldpos = -1;                 // 递增字段在结果集数组中的位置。
 
-connection conn;
+connection conn, conn1;
 
 CLogFile logfile;
 
@@ -55,9 +57,9 @@ CPActive PActive; // 进程心跳。
 char strxmlfilename[301]; // xml文件名。
 void crtxmlfilename();    // 生成xml文件名。
 
-long imaxincvalue;   // 自增字段的最大值。
-bool readincfile();  // 从starg.incfilename文件中获取已抽取数据的最大id。
-bool writeincfile(); // 把已抽取数据的最大id写入starg.incfilename文件。
+long imaxincvalue;    // 自增字段的最大值。
+bool readincfield();  // 从数据库表中或starg.incfilename文件中获取已抽取数据的最大id。
+bool writeincfield(); // 把已抽取数据的最大id写入数据库表或starg.incfilename文件。
 
 int main(int argc, char *argv[])
 {
@@ -93,7 +95,7 @@ int main(int argc, char *argv[])
     // 注意，在调试程序的时候，可以启用类似以下的代码，防止超时。
     // PActive.AddPInfo(5000, starg.pname);
 
-    // 连接数据库。
+    // 连接数据源的数据库。
     if (conn.connecttodb(starg.connstr, starg.charset) != 0)
     {
         logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn.m_cda.message);
@@ -101,6 +103,17 @@ int main(int argc, char *argv[])
     }
 
     logfile.Write("connect database(%s) ok.\n", starg.connstr);
+
+    // 连接本地的数据库，用于存放已抽取数据的自增字段的最大值。
+    if (strlen(starg.connstr1) != 0)
+    {
+        if (conn1.connecttodb(starg.connstr1, starg.charset) != 0)
+        {
+            logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr1, conn1.m_cda.message);
+            return -1;
+        }
+        logfile.Write("connect database(%s) ok.\n", starg.connstr1);
+    }
 
     _dminingmysql();
 
@@ -110,8 +123,8 @@ int main(int argc, char *argv[])
 // 数据抽取的主函数。
 bool _dminingmysql()
 {
-    // 从starg.incfilename文件中获取已抽取数据的最大id。
-    readincfile();
+    // 从数据库表中或starg.incfilename文件中获取已抽取数据的最大id。
+    readincfield();
 
     sqlstatement stmt(&conn);
     stmt.prepare(starg.selectsql);
@@ -160,8 +173,8 @@ bool _dminingmysql()
 
         File.Fprintf("<endl/>\n");
 
-        // 如果记录数达到1000行就切换一个xml文件。
-        if (stmt.m_cda.rpc % 1000 == 0)
+        // 如果记录数达到starg.maxcount行就切换一个xml文件。
+        if ((starg.maxcount > 0) && (stmt.m_cda.rpc % starg.maxcount == 0))
         {
             File.Fprintf("</data>\n");
 
@@ -171,13 +184,13 @@ bool _dminingmysql()
                 return false;
             }
 
-            logfile.Write("生成文件%s(1000)。\n", strxmlfilename);
-            
+            logfile.Write("生成文件%s(%d)。\n", strxmlfilename, starg.maxcount);
+
             PActive.UptATime();
         }
 
         // 更新自增字段的最大值。
-        if (imaxincvalue < atol(strfieldvalue[incfieldpos]))
+        if ((strlen(starg.incfield) != 0) && (imaxincvalue < atol(strfieldvalue[incfieldpos])))
             imaxincvalue = atol(strfieldvalue[incfieldpos]);
     }
 
@@ -191,12 +204,15 @@ bool _dminingmysql()
             return false;
         }
 
-        logfile.Write("生成文件%s(%d)。\n", strxmlfilename, stmt.m_cda.rpc % 1000);
+        if (starg.maxcount == 0)
+            logfile.Write("生成文件%s(%d)。\n", strxmlfilename, stmt.m_cda.rpc);
+        else
+            logfile.Write("生成文件%s(%d)。\n", strxmlfilename, stmt.m_cda.rpc % starg.maxcount);
     }
 
-    // 把最大的自增字段的值写入starg.incfilename文件中。
+    // 把已抽取数据的最大id写入数据库表或starg.incfilename文件。
     if (stmt.m_cda.rpc > 0)
-        writeincfile();
+        writeincfield();
 
     return true;
 }
@@ -213,7 +229,7 @@ void _help()
     printf("Using:/project/tools1/bin/dminingmysql logfilename xmlbuffer\n\n");
 
     printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTCODE.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,cityname,provname,lat,lon,height from T_ZHOBTCODE</selectsql><fieldstr>obtid,cityname,provname,lat,lon,height</fieldstr><fieldlen>10,30,30,10,10,10</fieldlen><bfilename>ZHOBTCODE</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><timeout>30</timeout><pname>dminingmysql_ZHOBTCODE</pname>\"\n\n");
-    printf("       /project/tools1/bin/procctl   30 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTMIND.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,date_format(ddatetime,'%%%%Y-%%%%m-%%%%d %%%%H:%%%%i:%%%%s'),t,p,u,wd,wf,r,vis,keyid from T_ZHOBTMIND where keyid>:1 and ddatetime>timestampadd(minute,-120,now())</selectsql><fieldstr>obtid,ddatetime,t,p,u,wd,wf,r,vis,keyid</fieldstr><fieldlen>10,19,8,8,8,8,8,8,8,15</fieldlen><bfilename>ZHOBTMIND</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><starttime></starttime><incfield>keyid</incfield><incfilename>/idcdata/dmining/dminingmysql_ZHOBTMIND_HYCZ.list</incfilename><timeout>30</timeout><pname>dminingmysql_ZHOBTMIND_HYCZ</pname>\"\n\n");
+    printf("       /project/tools1/bin/procctl   30 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTMIND.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,date_format(ddatetime,'%%%%Y-%%%%m-%%%%d %%%%H:%%%%i:%%%%s'),t,p,u,wd,wf,r,vis,keyid from T_ZHOBTMIND where keyid>:1 and ddatetime>timestampadd(minute,-120,now())</selectsql><fieldstr>obtid,ddatetime,t,p,u,wd,wf,r,vis,keyid</fieldstr><fieldlen>10,19,8,8,8,8,8,8,8,15</fieldlen><bfilename>ZHOBTMIND</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><starttime></starttime><incfield>keyid</incfield><incfilename>/idcdata/dmining/dminingmysql_ZHOBTMIND_HYCZ.list</incfilename><timeout>30</timeout><pname>dminingmysql_ZHOBTMIND_HYCZ</pname><maxcount>1000</maxcount><connstr1>127.0.0.1,root,123456,ren,3306</connstr1>\"\n\n");
 
     printf("本程序是数据中心的公共功能模块，用于从mysql数据库源表抽取数据，生成xml文件。\n");
     printf("logfilename 本程序运行的日志文件。\n");
@@ -227,12 +243,14 @@ void _help()
     printf("bfilename   输出xml文件的前缀。\n");
     printf("efilename   输出xml文件的后缀。\n");
     printf("outpath     输出xml文件存放的目录。\n");
+    printf("maxcount    输出xml文件的最大记录数，缺省是0，表示无限制，如果本参数取值为0，注意适当加大timeout的取值，防止程序超时。\n");
     printf("starttime   程序运行的时间区间，例如02,13表示：如果程序启动时，踏中02时和13时则运行，其它时间不运行。"
            "如果starttime为空，那么starttime参数将失效，只要本程序启动就会执行数据抽取，为了减少数据源"
            "的压力，从数据库抽取数据的时候，一般在对方数据库最闲的时候时进行。\n");
     printf("incfield    递增字段名，它必须是fieldstr中的字段名，并且只能是整型，一般为自增字段。"
            "如果incfield为空，表示不采用增量抽取方案。");
     printf("incfilename 已抽取数据的递增字段最大值存放的文件，如果该文件丢失，将重新抽取全部的数据。\n");
+    printf("connstr1    已抽取数据的递增字段最大值存放的数据库的连接参数。connstr1和incfilename二选一，connstr1优先。");
     printf("timeout     本程序的超时时间，单位：秒。\n");
     printf("pname       进程名，尽可能采用易懂的、与其它进程不同的名称，方便故障排查。\n\n\n");
 }
@@ -303,6 +321,10 @@ bool _xmltoarg(char *strxmlbuffer)
     GetXMLBuffer(strxmlbuffer, "incfield", starg.incfield, 30); // 可选参数。
 
     GetXMLBuffer(strxmlbuffer, "incfilename", starg.incfilename, 300); // 可选参数。
+
+    GetXMLBuffer(strxmlbuffer, "maxcount", &starg.maxcount); // 可选参数。
+
+    GetXMLBuffer(strxmlbuffer, "connstr1", starg.connstr1, 100); // 可选参数。
 
     GetXMLBuffer(strxmlbuffer, "timeout", &starg.timeout); // 进程心跳的超时时间。
     if (starg.timeout == 0)
@@ -377,6 +399,12 @@ bool _xmltoarg(char *strxmlbuffer)
             logfile.Write("递增字段名%s不在列表%s中。\n", starg.incfield, starg.fieldstr);
             return false;
         }
+
+        if ((strlen(starg.incfilename) == 0) && (strlen(starg.connstr1) == 0))
+        {
+            logfile.Write("incfilename和connstr1参数必须二选一。\n");
+            return false;
+        }
     }
 
     return true;
@@ -410,27 +438,41 @@ void crtxmlfilename() // 生成xml文件名。
     SNPRINTF(strxmlfilename, 300, sizeof(strxmlfilename), "%s/%s_%s_%s_%d.xml", starg.outpath, starg.bfilename, strLocalTime, starg.efilename, iseq++);
 }
 
-// 从starg.incfilename文件中获取已抽取数据的最大id。
-bool readincfile()
+// 从数据库表中或starg.incfilename文件中获取已抽取数据的最大id。
+bool readincfield()
 {
     imaxincvalue = 0; // 自增字段的最大值。
 
     // 如果starg.incfield参数为空，表示不是增量抽取。
     if (strlen(starg.incfield) == 0)
         return true;
+    if (strlen(starg.connstr1) != 0)
+    {
+        // 从数据库表中加载自增字段的最大值。
+        // create table T_MAXINCVALUE(pname varchar(50),maxincvalue numeric(15),primary key(pname));
+        sqlstatement stmt(&conn1);
+        stmt.prepare("select maxincvalue from T_MAXINCVALUE where pname=:1");
+        stmt.bindin(1, starg.pname, 50);
+        stmt.bindout(1, &imaxincvalue);
+        stmt.execute();
+        stmt.next();
+    }
+    else
+    {
+        // 从文件中加载自增字段的最大值。
+        CFile File;
 
-    CFile File;
+        // 如果打开starg.incfilename文件失败，表示是第一次运行程序，也不必返回失败。
+        // 也可能是文件丢了，那也没办法，只能重新抽取。
+        if (File.Open(starg.incfilename, "r") == false)
+            return true;
 
-    // 如果打开starg.incfilename文件失败，表示是第一次运行程序，也不必返回失败。
-    // 也可能是文件丢了，那也没办法，只能重新抽取。
-    if (File.Open(starg.incfilename, "r") == false)
-        return true;
+        // 从文件中读取已抽取数据的最大id。
+        char strtemp[31];
+        File.FFGETS(strtemp, 30);
 
-    // 从文件中读取已抽取数据的最大id。
-    char strtemp[31];
-    File.FFGETS(strtemp, 30);
-
-    imaxincvalue = atol(strtemp);
+        imaxincvalue = atol(strtemp);
+    }
 
     logfile.Write("上次已抽取数据的位置（%s=%ld）。\n", starg.incfield, imaxincvalue);
 
@@ -438,24 +480,54 @@ bool readincfile()
 }
 
 // 把已抽取数据的最大id写入starg.incfilename文件。
-bool writeincfile()
+bool writeincfield()
 {
     // 如果starg.incfield参数为空，表示不是增量抽取。
     if (strlen(starg.incfield) == 0)
         return true;
-
-    CFile File;
-
-    if (File.Open(starg.incfilename, "w+") == false)
+    if (strlen(starg.connstr1) != 0)
     {
-        logfile.Write("File.Open(%s) failed.\n", starg.incfilename);
-        return false;
+        // 把自增字段的最大值写入数据库的表。
+        // create table T_MAXINCVALUE(pname varchar(50),maxincvalue numeric(15),primary key(pname));
+        sqlstatement stmt(&conn1);
+        stmt.prepare("update T_MAXINCVALUE set maxincvalue=:1 where pname=:2");
+        if (stmt.m_cda.rc == 1146)
+        {
+            // 如果表不存在，就创建表。
+            conn1.execute("create table T_MAXINCVALUE(pname varchar(50),maxincvalue numeric(15),primary key(pname))");
+            conn1.execute("insert into T_MAXINCVALUE values('%s',%ld)", starg.pname, imaxincvalue);
+            conn1.commit();
+            return true;
+        }
+        stmt.bindin(1, &imaxincvalue);
+        stmt.bindin(2, starg.pname, 50);
+        if (stmt.execute() != 0)
+        {
+            logfile.Write("stmt.execute() failed.\n%s\n%s\n", stmt.m_sql, stmt.m_cda.message);
+            return false;
+        }
+        if (stmt.m_cda.rpc == 0)
+        {
+            conn1.execute("insert into T_MAXINCVALUE values('%s',%ld)", starg.pname, imaxincvalue);
+        }
+        conn1.commit();
     }
+    else
+    {
+        // 把自增字段的最大值写入文件。
+        CFile File;
 
-    // 把已抽取数据的最大id写入文件。
-    File.Fprintf("%ld", imaxincvalue);
+        if (File.Open(starg.incfilename, "w+") == false)
+        {
+            logfile.Write("File.Open(%s) failed.\n", starg.incfilename);
+            return false;
+        }
 
-    File.Close();
+        // 把已抽取数据的最大id写入文件。
+        File.Fprintf("%ld", imaxincvalue);
+
+        File.Close();
+    }
 
     return true;
 }
