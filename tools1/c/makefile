@@ -21,7 +21,7 @@ MYSQLCPP = /project/public/db/mysql/_mysql.cpp
 
 
 all:procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver \
-    tcpgetfiles execsql dminingmysql
+    tcpgetfiles execsql dminingmysql xmltodb
 
 procctl:procctl.cpp
 		g++ -o procctl procctl.cpp
@@ -67,7 +67,11 @@ dminingmysql:dminingmysql.cpp
 	g++ $(CFLAGS) -o dminingmysql dminingmysql.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
 	cp dminingmysql ../bin/.
 
+xmltodb:xmltodb.cpp
+	g++ $(CFLAGS) -o xmltodb xmltodb.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
+	cp xmltodb ../bin/.
+
 
 clean:
 		rm -f procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver
-		rm -f tcpgetfiles execsql dminingmysql
+		rm -f tcpgetfiles execsql dminingmysql xmltodb
