@@ -111,7 +111,9 @@ bool _obtmindtodb(char *pathname, char *connstr, char *charset)
 
             logfile.Write("connect database(%s) ok.\n", connstr);
         }
+
         totalcount = insertcount = 0;
+        
         // 打开文件。
         if (File.Open(Dir.m_FullFileName, "r") == false)
         {

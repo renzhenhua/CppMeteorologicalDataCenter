@@ -129,8 +129,6 @@ int main(int argc, char *argv[])
 // 把站点参数文件中加载到vstcode容器中。
 bool LoadSTCode(const char *inifile)
 {
-    CFile File;
-
     //打开站点参数文件。
     if (File.Open(inifile, "r") == false)
     {
@@ -149,8 +147,6 @@ bool LoadSTCode(const char *inifile)
         // 从站点参数文件中读取一行，如果已读取完，跳出循环。
         if (File.Fgets(strBuffer, 300, true) == false)
             break; // Fgets中已经对strBuffer做了初始化
-
-        // logfile.Write("=%s=\n",strBuffer);
 
         // 把读取到的一行拆分。
         CmdStr.SplitToCmd(strBuffer, ",", true);
@@ -194,7 +190,7 @@ void CrtSurfData()
     {
         memset(&stsurfdata, 0, sizeof(struct st_surfdata));
         // 用随机数填充分钟观测数据的结构体。
-        strncpy(stsurfdata.obtid, vstcode[ii].obtid, 10); // 站点代码
+        strncpy(stsurfdata.obtid, vstcode[ii].obtid, 10); // 站点代码。
         strncpy(stsurfdata.ddatetime, strddatetime, 14);  // 数据时间：格式yyyymmddhh24miss
         stsurfdata.t = rand() % 351;                      // 气温：单位，0.1摄氏度
         stsurfdata.p = rand() % 265 + 10000;              // 气压：0.1百帕
@@ -207,15 +203,11 @@ void CrtSurfData()
         // 把观测数据的结构体放入vsurfdata容器。
         vsurfdata.push_back(stsurfdata);
     }
-
-    // printf("aaa\n");
 }
 
 // 把容器vsurfdata中的全国气象站点分钟观测数据写入文件
 bool CrtSurfFile(const char *outpath, const char *datafmt)
 {
-    // CFile File;
-
     // 拼接生成数据的文件名，例如：/tmp/idc/surfdata/SURF_ZH_20210629092200_2254.csv
     char strFileName[301];
     sprintf(strFileName, "%s/SURF_ZH_%s_%d.%s", outpath, strddatetime, getpid(), datafmt);
@@ -227,7 +219,6 @@ bool CrtSurfFile(const char *outpath, const char *datafmt)
         return false;
     }
 
-    // 写入第一行标题。
     if (strcmp(datafmt, "csv") == 0)
         File.Fprintf("站点代码,数据时间,气温,气压,相对湿度,风向,风速,降雨量,能见度\n");
     if (strcmp(datafmt, "xml") == 0)
@@ -272,14 +263,12 @@ bool CrtSurfFile(const char *outpath, const char *datafmt)
     if (strcmp(datafmt, "json") == 0)
         File.Fprintf("]}\n");
 
-    // sleep(10);
-
-    // 关闭文件
+    // 关闭文件。
     File.CloseAndRename();
 
     UTime(strFileName, strddatetime); // 修改文件的时间属性。
 
-    logfile.Write("生成数据文件%s成功，数据时间%s, 记录数%d。\n", strFileName, strddatetime, vsurfdata.size());
+    logfile.Write("生成数据文件%s成功，数据时间%s，记录数%d。\n", strFileName, strddatetime, vsurfdata.size());
 
     return true;
 }

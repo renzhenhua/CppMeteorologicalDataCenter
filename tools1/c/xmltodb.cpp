@@ -2,9 +2,9 @@
  *  程序名：xmltodb.cpp，本程序是数据中心的公共功能模块，用于把xml文件入库到MySQL的表中。
  *  作者：任振华。
  */
-#include "_public.h"
-#include "_mysql.h"
+#include "_tools.h"
 
+/*
 // 表的列(字段)信息的结构体。
 struct st_columns
 {
@@ -37,6 +37,8 @@ public:
     // 获取指定表的主键字段信息。
     bool pkcols(connection *conn, char *tablename);
 };
+*/
+
 struct st_arg
 {
     char connstr[101];     // 数据库的连接参数。
@@ -79,6 +81,7 @@ bool loadxmltotable();
 bool findxmltotable(char *xmlfilename);
 
 // 处理xml文件的子函数，返回值：0-成功，其它的都是失败，失败的情况有很多种，暂时不确定。
+int totalcount, inscount, uptcount; // xml文件的总记录数、插入记录数和更新记录数。
 int _xmltodb(char *fullfilename, char *filename);
 
 // 把xml文件移动到备份目录或错误目录。
@@ -93,10 +96,9 @@ char strupdatesql[10241]; // 更新表的SQL语句。
 void crtsql();
 
 // prepare插入和更新的sql语句，绑定输入变量。
-#define MAXCOLCOUNT 300                       // 每个表字段的最大数。
-#define MAXCOLLEN 100                         // 表字段值的最大长度。
-char strcolvalue[MAXCOLCOUNT][MAXCOLLEN + 1]; // 存放从xml每一行中解析出来的值。
-sqlstatement stmtins, stmtupt;                // 插入和更新表的sqlstatement对象。
+#define MAXCOLCOUNT 500         // 每个表字段的最大数，也可以用MAXPARAMS宏（在_mysql.h中定义）。
+char *strcolvalue[MAXCOLCOUNT]; // 存放从xml每一行中解析出来的值。
+sqlstatement stmtins, stmtupt;  // 插入和更新表的sqlstatement对象。
 void preparesql();
 
 // 在处理xml文件之前，如果stxmltotable.execsql不为空，就执行它。
@@ -104,6 +106,8 @@ bool execsql();
 
 // 解析xml，存放在已绑定的输入变量strcolvalue数组中。
 void splitbuffer(char *strBuffer);
+
+CPActive PActive; // 进程的心跳。
 
 int main(int argc, char *argv[])
 {
@@ -116,7 +120,7 @@ int main(int argc, char *argv[])
     // 关闭全部的信号和输入输出。
     // 设置信号,在shell状态下可用 "kill + 进程号" 正常终止些进程。
     // 但请不要用 "kill -9 +进程号" 强行终止。
-    // CloseIOAndSignal();
+    CloseIOAndSignal();
     signal(SIGINT, EXIT);
     signal(SIGTERM, EXIT);
 
@@ -130,13 +134,7 @@ int main(int argc, char *argv[])
     if (_xmltoarg(argv[2]) == false)
         return -1;
 
-    if (conn.connecttodb(starg.connstr, starg.charset) != 0)
-    {
-        printf("connect database(%s) failed.\n%s\n", starg.connstr, conn.m_cda.message);
-        EXIT(-1);
-    }
-
-    logfile.Write("connect database(%s) ok.\n", starg.connstr);
+    PActive.AddPInfo(starg.timeout, starg.pname); // 设置进程的心跳参数。
 
     // 业务处理主函数。
     _xmltodb();
@@ -147,7 +145,7 @@ void _help(char *argv[])
 {
     printf("Using:/project/tools1/bin/xmltodb logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/xmltodb /log/idc/xmltodb_vip1.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><inifilename>/project/tools/ini/xmltodb.xml</inifilename><xmlpath>/idcdata/xmltodb/vip1</xmlpath><xmlpathbak>/idcdata/xmltodb/vip1bak</xmlpathbak><xmlpatherr>/idcdata/xmltodb/vip1err</xmlpatherr><timetvl>5</timetvl><timeout>50</timeout><pname>xmltodb_vip1</pname>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/xmltodb /log/idc/xmltodb_vip1.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><inifilename>/project/idc1/ini/xmltodb.xml</inifilename><xmlpath>/idcdata/xmltodb/vip1</xmlpath><xmlpathbak>/idcdata/xmltodb/vip1bak</xmlpathbak><xmlpatherr>/idcdata/xmltodb/vip1err</xmlpatherr><timetvl>5</timetvl><timeout>50</timeout><pname>xmltodb_vip1</pname>\"\n\n");
 
     printf("本程序是数据中心的公共功能模块，用于把xml文件入库到MySQL的表中。\n");
     printf("logfilename   本程序运行的日志文件。\n");
@@ -273,27 +271,41 @@ bool _xmltodb()
             if (Dir.ReadDir() == false)
                 break;
 
+            if (conn.m_state == 0)
+            {
+                if (conn.connecttodb(starg.connstr, starg.charset) != 0)
+                {
+                    logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn.m_cda.message);
+                    return false;
+                }
+                logfile.Write("connect database(%s) ok.\n", starg.connstr);
+            }
+
             logfile.Write("处理文件%s...", Dir.m_FullFileName);
 
             // 调用处理xml文件的子函数。
             int iret = _xmltodb(Dir.m_FullFileName, Dir.m_FileName);
 
+            PActive.UptATime();
+
             // 处理xml文件成功，写日志，备份文件。
             if (iret == 0)
             {
-                logfile.WriteEx("ok.\n");
+                logfile.WriteEx("ok(%s,total=%d,insert=%d,update=%d).\n", stxmltotable.tname, totalcount, inscount, uptcount);
                 // 把xml文件移动到starg.xmlpathbak参数指定的目录中，一般不会发生错误，如果真发生了，程序将退出。
                 if (xmltobakerr(Dir.m_FullFileName, starg.xmlpath, starg.xmlpathbak) == false)
                     return false;
             }
 
-            // 1-没有配置入库参数；2-待入库的表不存在；
-            if ((iret == 1) || (iret == 2))
+            // 1-没有配置入库参数；2-待入库的表不存在；5-表的字段数太多。
+            if ((iret == 1) || (iret == 2) || (iret == 5))
             {
                 if (iret == 1)
                     logfile.WriteEx("failed，没有配置入库参数。\n");
                 if (iret == 2)
                     logfile.WriteEx("failed，待入库的表（%s）不存在。\n", stxmltotable.tname);
+                if (iret == 5)
+                    logfile.WriteEx("failed，待入库的表（%s）字段数太多。\n", stxmltotable.tname);
 
                 // 把xml文件移动到starg.xmlpatherr参数指定的目录中，一般不会发生错误，如果真发生了，程序将退出。
                 if (xmltobakerr(Dir.m_FullFileName, starg.xmlpath, starg.xmlpatherr) == false)
@@ -322,8 +334,11 @@ bool _xmltodb()
             }
         }
 
-        break;
-        sleep(starg.timetvl);
+        // 如果刚才这次扫描到了有文件，表示不空闲，可能不断的有文件生成，就不sleep了。
+        if (Dir.m_vFileName.size() == 0)
+            sleep(starg.timetvl);
+
+        PActive.UptATime();
     }
 
     return true;
@@ -332,9 +347,19 @@ bool _xmltodb()
 // 处理xml文件的子函数，返回值：0-成功，其它的都是失败，失败的情况有很多种，暂时不确定。
 int _xmltodb(char *fullfilename, char *filename)
 {
+    totalcount = inscount = uptcount = 0;
+
     // 从vxmltotable容器中查找filename的入库参数，存放在stxmltotable结构体中。
     if (findxmltotable(filename) == false)
         return 1;
+
+    // 释放上次处理xml文件时为字段分配内存。
+    for (int ii = 0; ii < TABCOLS.m_allcount; ii++)
+        if (strcolvalue[ii] != 0)
+        {
+            delete strcolvalue[ii];
+            strcolvalue[ii] = 0;
+        }
 
     // 获取表全部的字段和主键信息，如果获取失败，应该是数据库连接已失效。
     // 在本程序运行的过程中，如果数据库出现异常，一定会在这里发现。
@@ -346,6 +371,14 @@ int _xmltodb(char *fullfilename, char *filename)
     // 如果TABCOLS.m_allcount为0，说明表根本不存在，返回2。
     if (TABCOLS.m_allcount == 0)
         return 2; // 待入库的表不存在。
+
+    // 判断表的字段数不能超过MAXCOLCOUNT。
+    if (TABCOLS.m_allcount > MAXCOLCOUNT)
+        return 5;
+
+    // 为每个字段分配内存。
+    for (int ii = 0; ii < TABCOLS.m_allcount; ii++)
+        strcolvalue[ii] = new char[TABCOLS.m_vallcols[ii].collen + 1];
 
     // 拼接生成插入和更新表数据的SQL。
     crtsql();
@@ -373,6 +406,8 @@ int _xmltodb(char *fullfilename, char *filename)
         if (File.FFGETS(strBuffer, 10240, "<endl/>") == false)
             break;
 
+        totalcount++;
+
         // 解析xml，存放在已绑定的输入变量strcolvalue数组中。
         splitbuffer(strBuffer);
 
@@ -395,6 +430,8 @@ int _xmltodb(char *fullfilename, char *filename)
                         if ((stmtupt.m_cda.rc == 1053) || (stmtupt.m_cda.rc == 2013))
                             return 4;
                     }
+                    else
+                        uptcount++;
                 }
             }
             else
@@ -409,6 +446,8 @@ int _xmltodb(char *fullfilename, char *filename)
                     return 4;
             }
         }
+        else
+            inscount++;
     }
 
     conn.commit();
@@ -483,16 +522,6 @@ bool xmltobakerr(char *fullfilename, char *srcpath, char *dstpath)
 }
 
 /*
-// 表的列(字段)信息的结构体。
-struct st_columns
-{
-  char  colname[31];  // 列名。
-  char  datatype[31]; // 列的数据类型，分为number、date和char三大类。
-  int   collen;       // 列的长度，number固定20，date固定19，char的长度由表结构决定。
-  int   pkseq;        // 如果列是主键的字段，存放主键字段的顺序，从1开始，不是主键取值0。
-};
-*/
-
 // 获取表全部的列和主键列信息的类。
 CTABCOLS::CTABCOLS()
 {
@@ -636,6 +665,7 @@ bool CTABCOLS::pkcols(connection *conn, char *tablename)
 
     return true;
 }
+*/
 
 // 拼接生成插入和更新表数据的SQL。
 void crtsql()
@@ -846,7 +876,9 @@ bool execsql()
 // 解析xml，存放在已绑定的输入变量strcolvalue数组中。
 void splitbuffer(char *strBuffer)
 {
-    memset(strcolvalue, 0, sizeof(strcolvalue));
+    // 初始化strcolvalue数组。
+    for (int ii = 0; ii < TABCOLS.m_allcount; ii++)
+        memset(strcolvalue[ii], 0, TABCOLS.m_vallcols[ii].collen + 1);
 
     char strtemp[31];
 
