@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     }
 
     // 关闭全部的信号和输入输出，处理程序退出的信号。
-    // CloseIOAndSignal();
+    CloseIOAndSignal();
     signal(SIGINT, EXIT);
     signal(SIGTERM, EXIT);
 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     if (_xmltoarg(argv[2]) == false)
         return -1;
 
-    // PActive.AddPInfo(starg.timeout,starg.pname);
+    PActive.AddPInfo(starg.timeout,starg.pname);
     // 注意，在调试程序的时候，可以启用类似以下的代码，防止超时。
     // PActive.AddPInfo(starg.timeout*100,starg.pname);
 
@@ -76,6 +76,24 @@ int main(int argc, char *argv[])
     }
 
     // logfile.Write("connect database(%s) ok.\n",starg.localconnstr);
+
+    // 如果starg.remotecols或starg.localcols为空，就用starg.localtname表的全部列来填充。
+    if ((strlen(starg.remotecols) == 0) || (strlen(starg.localcols) == 0))
+    {
+        CTABCOLS TABCOLS;
+
+        // 获取starg.localtname表的全部列。
+        if (TABCOLS.allcols(&connloc, starg.localtname) == false)
+        {
+            logfile.Write("表%s不存在。\n", starg.localtname);
+            EXIT(-1);
+        }
+
+        if (strlen(starg.remotecols) == 0)
+            strcpy(starg.remotecols, TABCOLS.m_allcols);
+        if (strlen(starg.localcols) == 0)
+            strcpy(starg.localcols, TABCOLS.m_allcols);
+    }
 
     // 业务处理主函数。
     _syncupdate();
@@ -94,7 +112,7 @@ void _help(char *argv[])
 
     printf("       /project/tools1/bin/procctl 10 /project/tools1/bin/syncupdate /log/idc/syncupdate_ZHOBTMIND2.log \"<localconnstr>1.14.120.161,root,123456,ren,3306</localconnstr><charset>utf8</charset><fedtname>LK_ZHOBTMIND1</fedtname><localtname>T_ZHOBTMIND2</localtname><remotecols>obtid,ddatetime,t,p,u,wd,wf,r,vis,upttime,keyid</remotecols><localcols>stid,ddatetime,t,p,u,wd,wf,r,vis,upttime,recid</localcols><where>where ddatetime>timestampadd(minute,-120,now())</where><synctype>2</synctype><synctype>2</synctype><remoteconnstr>175.178.53.221,root,123456,ren,3306</remoteconnstr><remotetname>T_ZHOBTMIND1</remotetname><remotekeycol>keyid</remotekeycol><localkeycol>recid</localkeycol><maxcount>300</maxcount><timeout>50</timeout><pname>syncupdate_ZHOBTMIND2</pname>\"\n\n");
 
-    printf("本程序是数据中心的公共功能模块，采用刷新的方法同步MySQL数据库之间的表。\n");
+    printf("本程序是数据中心的公共功能模块，采用刷新的方法同步MySQL数据库之间的表。\n\n");
 
     printf("logfilename   本程序运行的日志文件。\n");
     printf("xmlbuffer     本程序运行的参数，用xml表示，具体如下：\n\n");
@@ -105,10 +123,14 @@ void _help(char *argv[])
     printf("fedtname      Federated表名。\n");
     printf("localtname    本地表名。\n");
 
-    printf("remotecols    远程表的字段列表，用于填充在select和from之间，所以，remotecols可以是真实的字段，也可以是函数的返回值或者运算结果。如果本参数为空，就用localtname表的字段列表填充。\n");
-    printf("localcols     本地表的字段列表，与remotecols不同，它必须是真实存在的字段。如果本参数为空，就用localtname表的字段列表填充。\n");
+    printf("remotecols    远程表的字段列表，用于填充在select和from之间，所以，remotecols可以是真实的字段，\n"
+           "              也可以是函数的返回值或者运算结果。如果本参数为空，就用localtname表的字段列表填充。\n");
+    printf("localcols     本地表的字段列表，与remotecols不同，它必须是真实存在的字段。如果本参数为空，\n"
+           "              就用localtname表的字段列表填充。\n");
 
-    printf("where         同步数据的条件，即select语句的where部分，本参数可以为空，表示同步全部的记录。\n");
+    printf("where         同步数据的条件，为空则表示同步全部的记录，填充在delete本地表和select Federated表\n"
+           "              之后，注意：1）where中的字段必须同时在本地表和Federated表中；2）不要用系统时间作\n"
+           "              为条件，当synctype==2时无此问题。\n");
 
     printf("synctype      同步方式：1-不分批同步；2-分批同步。\n");
     printf("remoteconnstr 远程数据库的连接参数，格式与localconnstr相同，当synctype==2时有效。\n");
@@ -120,7 +142,7 @@ void _help(char *argv[])
 
     printf("timeout       本程序的超时时间，单位：秒，视数据量的大小而定，建议设置30以上。\n");
     printf("pname         本程序运行时的进程名，尽可能采用易懂的、与其它进程不同的名称，方便故障排查。\n\n");
-    printf("注意：1）remotekeycol和localkeycol字段的选取很重要，如果用了MySQL的自增字段，那么在远程表中数据生成后自增字段的值不可改变，否则同步会失败；2）当远程表中存在delete操作时，无法分批同步，因为远程表的记录被delete后就找不到了，无法从本地表中执行delete操作。\n\n\n");
+    printf("注意：\n1）remotekeycol和localkeycol字段的选取很重要，如果用了MySQL的自增字段，那么在远程表中数据生成后自增字段的值不可改变，否则同步会失败；\n2）当远程表中存在delete操作时，无法分批同步，因为远程表的记录被delete后就找不到了，无法从本地表中执行delete操作。\n\n\n");
 }
 
 // 把xml解析到参数starg结构中
@@ -242,6 +264,17 @@ bool _xmltoarg(char *strxmlbuffer)
     return true;
 }
 
+void EXIT(int sig)
+{
+    logfile.Write("程序退出，sig=%d\n\n", sig);
+
+    connloc.disconnect();
+
+    connrem.disconnect();
+
+    exit(0);
+}
+
 /*
 create table LK_ZHOBTCODE1
 (
@@ -278,6 +311,164 @@ create table LK_ZHOBTMIND1
 // 业务处理主函数。
 bool _syncupdate()
 {
+    CTimer Timer;
+
+    sqlstatement stmtdel(&connloc); // 删除本地表中记录的SQL语句。
+    sqlstatement stmtins(&connloc); // 向本地表中插入数据的SQL语句。
+
+    // 如果是不分批同步，表示需要同步的数据量比较少，执行一次SQL语句就可以搞定。
+    if (starg.synctype == 1)
+    {
+        logfile.Write("sync %s to %s ...", starg.fedtname, starg.localtname);
+
+        // 先删除starg.localtname表中满足where条件的记录。
+        stmtdel.prepare("delete from %s %s", starg.localtname, starg.where);
+        if (stmtdel.execute() != 0)
+        {
+            logfile.Write("stmtdel.execute() failed.\n%s\n%s\n", stmtdel.m_sql, stmtdel.m_cda.message);
+            return false;
+        }
+
+        // 再把starg.fedtname表中满足where条件的记录插入到starg.localtname表中。
+        stmtins.prepare("insert into %s(%s) select %s from %s %s", starg.localtname, starg.localcols, starg.remotecols, starg.fedtname, starg.where);
+        if (stmtins.execute() != 0)
+        {
+            logfile.Write("stmtins.execute() failed.\n%s\n%s\n", stmtins.m_sql, stmtins.m_cda.message);
+            connloc.rollback(); // 如果这里失败了，可以不用回滚事务，connection类的析构函数会回滚。
+            return false;
+        }
+
+        logfile.WriteEx(" %d rows in %.2fsec.\n", stmtins.m_cda.rpc, Timer.Elapsed());
+
+        connloc.commit();
+
+        return true;
+    }
+
+    // 把connrem的连数据库的代码放在这里，如果synctype==1，根本就不用以下代码了。
+    if (connrem.connecttodb(starg.remoteconnstr, starg.charset) != 0)
+    {
+        logfile.Write("connect database(%s) failed.\n%s\n", starg.remoteconnstr, connrem.m_cda.message);
+        return false;
+    }
+
+    // logfile.Write("connect database(%s) ok.\n",starg.remoteconnstr);
+
+    // 从远程表查找的需要同步记录的key字段的值。
+    char remkeyvalue[51]; // 从远程表查到的需要同步记录的key字段的值。
+    sqlstatement stmtsel(&connrem);
+    stmtsel.prepare("select %s from %s %s", starg.remotekeycol, starg.remotetname, starg.where);
+    stmtsel.bindout(1, remkeyvalue, 50);
+
+    // 拼接绑定同步SQL语句参数的字符串（:1,:2,:3,...,:starg.maxcount）。
+    char bindstr[2001]; // 绑定同步SQL语句参数的字符串。
+    char strtemp[11];
+
+    memset(bindstr, 0, sizeof(bindstr));
+
+    for (int ii = 0; ii < starg.maxcount; ii++)
+    {
+        memset(strtemp, 0, sizeof(strtemp));
+        sprintf(strtemp, ":%lu,", ii + 1);
+        strcat(bindstr, strtemp);
+    }
+
+    bindstr[strlen(bindstr) - 1] = 0; // 最后一个逗号是多余的。
+
+    char keyvalues[starg.maxcount][51]; // 存放key字段的值。
+
+    // 准备删除本地表数据的SQL语句，一次删除starg.maxcount条记录。
+    // delete from T_ZHOBTCODE3 where stid in (:1,:2,:3,...,:starg.maxcount);
+    stmtdel.prepare("delete from %s where %s in (%s)", starg.localtname, starg.localkeycol, bindstr);
+    for (int ii = 0; ii < starg.maxcount; ii++)
+    {
+        stmtdel.bindin(ii + 1, keyvalues[ii], 50);
+    }
+
+    // 准备插入本地表数据的SQL语句，一次插入starg.maxcount条记录。
+    // insert into T_ZHOBTCODE3(stid ,cityname,provname,lat,lon,altitude,upttime,keyid)
+    //                   select obtid,cityname,provname,lat,lon,height/10,upttime,keyid from LK_ZHOBTCODE1
+    //                    where obtid in (:1,:2,:3);
+    stmtins.prepare("insert into %s(%s) select %s from %s where %s in (%s)", starg.localtname, starg.localcols, starg.remotecols, starg.fedtname, starg.remotekeycol, bindstr);
+    for (int ii = 0; ii < starg.maxcount; ii++)
+    {
+        stmtins.bindin(ii + 1, keyvalues[ii], 50);
+    }
+
+    int ccount = 0; // 记录从结果集中已获取记录的计数器。
+
+    memset(keyvalues, 0, sizeof(keyvalues));
+
+    if (stmtsel.execute() != 0)
+    {
+        logfile.Write("stmtsel.execute() failed.\n%s\n%s\n", stmtsel.m_sql, stmtsel.m_cda.message);
+        return false;
+    }
+
+    while (true)
+    {
+        // 获取需要同步数据的结果集。
+        if (stmtsel.next() != 0)
+            break;
+
+        strcpy(keyvalues[ccount], remkeyvalue);
+
+        ccount++;
+
+        // 每starg.maxcount条记录执行一次同步。
+        if (ccount == starg.maxcount)
+        {
+            // 从本地表中删除记录。
+            if (stmtdel.execute() != 0)
+            {
+                // 执行从本地表中删除记录的操作一般不会出错。
+                // 如果报错，就肯定是数据库的问题或同步的参数配置不正确，流程不必继续。
+                logfile.Write("stmtdel.execute() failed.\n%s\n%s\n", stmtdel.m_sql, stmtdel.m_cda.message);
+                return false;
+            }
+
+            // 向本地表中插入记录。
+            if (stmtins.execute() != 0)
+            {
+                // 执行向本地表中插入记录的操作一般不会出错。
+                // 如果报错，就肯定是数据库的问题或同步的参数配置不正确，流程不必继续。
+                logfile.Write("stmtins.execute() failed.\n%s\n%s\n", stmtins.m_sql, stmtins.m_cda.message);
+                return false;
+            }
+
+            logfile.Write("sync %s to %s(%d rows) in %.2fsec.\n", starg.fedtname, starg.localtname, ccount, Timer.Elapsed());
+
+            connloc.commit();
+
+            ccount = 0; // 记录从结果集中已获取记录的计数器。
+
+            memset(keyvalues, 0, sizeof(keyvalues));
+
+            PActive.UptATime();
+        }
+    }
+
+    // 如果ccount>0，表示还有没同步的记录，再执行一次同步。
+    if (ccount > 0)
+    {
+        // 从本地表中删除记录。
+        if (stmtdel.execute() != 0)
+        {
+            logfile.Write("stmtdel.execute() failed.\n%s\n%s\n", stmtdel.m_sql, stmtdel.m_cda.message);
+            return false;
+        }
+
+        // 向本地表中插入记录。
+        if (stmtins.execute() != 0)
+        {
+            logfile.Write("stmtins.execute() failed.\n%s\n%s\n", stmtins.m_sql, stmtins.m_cda.message);
+            return false;
+        }
+
+        logfile.Write("sync %s to %s(%d rows) in %.2fsec.\n", starg.fedtname, starg.localtname, ccount, Timer.Elapsed());
+
+        connloc.commit();
+    }
 
     return true;
 }
