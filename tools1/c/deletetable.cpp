@@ -1,18 +1,17 @@
 /*
- *  程序名：migratetable.cpp，本程序是数据中心的公共功能模块，用于迁移表中的数据。
- *  作者：吴从周。
+ *  程序名：deletetable.cpp，本程序是数据中心的公共功能模块，采用增量的方法同步MySQL数据库之间的表。
+ *  作者：任振华。
  */
-#include "_tools.h"
+#include "_public.h"
+#include "_mysql.h"
 
 struct st_arg
 {
     char connstr[101];  // 数据库的连接参数。
-    char srctname[31];  // 待迁移的表名。
-    char dsttname[31];  // 目的表的表名。
-    char keycol[31];    // 待迁移的表的唯一键字段名。
-    char where[1001];   // 待迁移的数据需要满足的条件。
+    char tname[31];     // 待清理的表名。
+    char keycol[31];    // 待清理的表的唯一键字段名。
+    char where[1001];   // 待清理的数据需要满足的条件。
     char starttime[31]; // 程序运行的时间区间。
-    int maxcount;       // 每执行一次迁移操作的记录数。
     int timeout;        // 本程序运行时的超时时间。
     char pname[51];     // 本程序运行时的程序名。
 } starg;
@@ -29,10 +28,10 @@ CLogFile logfile;
 bool instarttime();
 
 connection conn1; // 用于执行查询SQL语句的数据库连接。
-connection conn2; // 用于执行插入和删除SQL语句的数据库连接。
+connection conn2; // 用于执行删除SQL语句的数据库连接。
 
 // 业务处理主函数。
-bool _migratetable();
+bool _deletetable();
 
 void EXIT(int sig);
 
@@ -46,8 +45,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // 关闭全部的信号和输入输出
-    // 处理程序退出的信号
+    // 关闭全部的信号和输入输出，处理程序退出的信号。
     CloseIOAndSignal();
     signal(SIGINT, EXIT);
     signal(SIGTERM, EXIT);
@@ -76,37 +74,37 @@ int main(int argc, char *argv[])
         EXIT(-1);
     }
 
-    if (conn2.connecttodb(starg.connstr, NULL) != 0)
+    if (conn2.connecttodb(starg.connstr, NULL, 1) != 0) // 开启自动提交。
     {
         logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn2.m_cda.message);
         EXIT(-1);
     }
 
+    // logfile.Write("connect database(%s) ok.\n",starg.connstr);
+
     // 业务处理主函数。
-    _migratetable();
+    _deletetable();
 }
 
 // 显示程序的帮助
 void _help(char *argv[])
 {
-    printf("Using:/project/tools1/bin/migratetable logfilename xmlbuffer\n\n");
+    printf("Using:/project/tools1/bin/deletetable logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/migratetable /log/idc/migratetable_ZHOBTMIND.log \"<connstr>127.0.0.1,root,mysqlpwd,mysql,3306</connstr><srctname>T_ZHOBTMIND</srctname><dsttname>T_ZHOBTMIND_HIS</dsttname><keycol>keyid</keycol><where>where ddatetime<timestampadd(minute,-120,now())</where><starttime>01,02,03,04,05,13</starttime><maxcount>300</maxcount><timeout>120</timeout><pname>migratetable_ZHOBTMIND</pname>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/deletetable /log/idc/deletetable_ZHOBTMIND1.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><tname>T_ZHOBTMIND1</tname><keycol>keyid</keycol><where>where ddatetime<timestampadd(minute,-120,now())</where><starttime>01,02,03,04,05,13</starttime><timeout>120</timeout><pname>deletetable_ZHOBTMIND1</pname>\"\n\n");
 
-    printf("本程序是数据中心的公共功能模块，用于迁移表中的数据。\n");
+    printf("本程序是数据中心的公共功能模块，用于定时清理表中的数据。\n");
 
     printf("logfilename 本程序运行的日志文件。\n");
     printf("xmlbuffer   本程序运行的参数，用xml表示，具体如下：\n\n");
 
     printf("connstr     数据库的连接参数，格式：ip,username,password,dbname,port。\n");
-    printf("srctname    待迁移数据源表的表名\n");
-    printf("dsttname    迁移目的表的表名，注意，srctname和dsttname的结构必须完全相同。\n");
-    printf("keycol      待迁移数据表的唯一键字段名。\n");
+    printf("tname       待清理数据表的表名。\n");
+    printf("keycol      待清理数据表的唯一键字段名。\n");
     printf("starttime   程序运行的时间区间，例如02,13表示：如果程序运行时，踏中02时和13时则运行，其它时间\n"
            "            不运行。如果starttime为空，本参数将失效，只要本程序启动就会执行数据迁移，为了减少\n"
            "            对数据库的压力，数据迁移一般在数据库最闲的时候时进行。\n");
-    printf("where       待迁移的数据需要满足的条件，即SQL语句中的where部分。\n");
-    printf("maxcount    每执行一次迁移操作的记录数，不能超过MAXPARAMS(256)。\n");
+    printf("where       待清理的数据需要满足的条件，即SQL语句中的where部分。\n");
     printf("timeout     本程序的超时时间，单位：秒，建议设置120以上。\n");
     printf("pname       进程名，尽可能采用易懂的、与其它进程不同的名称，方便故障排查。\n\n");
 }
@@ -123,17 +121,10 @@ bool _xmltoarg(char *strxmlbuffer)
         return false;
     }
 
-    GetXMLBuffer(strxmlbuffer, "srctname", starg.srctname, 30);
-    if (strlen(starg.srctname) == 0)
+    GetXMLBuffer(strxmlbuffer, "tname", starg.tname, 30);
+    if (strlen(starg.tname) == 0)
     {
-        logfile.Write("srctname is null.\n");
-        return false;
-    }
-
-    GetXMLBuffer(strxmlbuffer, "dsttname", starg.dsttname, 30);
-    if (strlen(starg.dsttname) == 0)
-    {
-        logfile.Write("dsttname is null.\n");
+        logfile.Write("tname is null.\n");
         return false;
     }
 
@@ -152,15 +143,6 @@ bool _xmltoarg(char *strxmlbuffer)
     }
 
     GetXMLBuffer(strxmlbuffer, "starttime", starg.starttime, 30);
-
-    GetXMLBuffer(strxmlbuffer, "maxcount", &starg.maxcount);
-    if (starg.maxcount == 0)
-    {
-        logfile.Write("maxcount is null.\n");
-        return false;
-    }
-    if (starg.maxcount > MAXPARAMS)
-        starg.maxcount = MAXPARAMS;
 
     GetXMLBuffer(strxmlbuffer, "timeout", &starg.timeout);
     if (starg.timeout == 0)
@@ -190,25 +172,15 @@ void EXIT(int sig)
 }
 
 // 业务处理主函数。
-bool _migratetable()
+bool _deletetable()
 {
     CTimer Timer;
 
-    // 从数据字典中获取表中全部的字段名。
-    CTABCOLS TABCOLS;
+    char tmpvalue[51]; // 存放从表提取待删除记录的唯一键的值。
 
-    // 获取待迁移数据表的字段名，用starg.srctname或starg.dsttname都可以。
-    if (TABCOLS.allcols(&conn2, starg.dsttname) == false)
-    {
-        logfile.Write("表%s不存在。\n", starg.dsttname);
-        return false;
-    }
-
-    char tmpvalue[51]; // 从数据源表查到的需要迁移记录的key字段的值。
-
-    // 从数据源表提取待迁移记录的唯一键，无需排序。
+    // 从表提取待删除记录的唯一键。
     sqlstatement stmtsel(&conn1);
-    stmtsel.prepare("select %s from %s %s", starg.keycol, starg.srctname, starg.where);
+    stmtsel.prepare("select %s from %s %s", starg.keycol, starg.tname, starg.where);
     stmtsel.bindout(1, tmpvalue, 50);
 
     // 拼接绑定删除SQL语句where 唯一键 in (...)的字符串。
@@ -217,7 +189,7 @@ bool _migratetable()
 
     memset(bindstr, 0, sizeof(bindstr));
 
-    for (int ii = 0; ii < starg.maxcount; ii++)
+    for (int ii = 0; ii < MAXPARAMS; ii++)
     {
         memset(strtemp, 0, sizeof(strtemp));
         sprintf(strtemp, ":%lu,", ii + 1);
@@ -226,20 +198,13 @@ bool _migratetable()
 
     bindstr[strlen(bindstr) - 1] = 0; // 最后一个逗号是多余的。
 
-    char keyvalues[starg.maxcount][51]; // 存放唯一键字段的值。
+    char keyvalues[MAXPARAMS][51]; // 存放唯一键字段的值。
 
-    // 准备插入和删除表数据的sql，一次迁移starg.maxcount条记录。
-    sqlstatement stmtins(&conn2);
-    stmtins.prepare("insert into %s(%s) select %s from %s where %s in (%s)", starg.dsttname, TABCOLS.m_allcols, TABCOLS.m_allcols, starg.srctname, starg.keycol, bindstr);
-
+    // 准备删除数据的SQL，一次删除MAXPARAMS条记录。
     sqlstatement stmtdel(&conn2);
-    stmtdel.prepare("delete from %s where %s in (%s)", starg.srctname, starg.keycol, bindstr);
-
-    for (int ii = 0; ii < starg.maxcount; ii++)
-    {
-        stmtins.bindin(ii + 1, keyvalues[ii], 50);
+    stmtdel.prepare("delete from %s where %s in (%s)", starg.tname, starg.keycol, bindstr);
+    for (int ii = 0; ii < MAXPARAMS; ii++)
         stmtdel.bindin(ii + 1, keyvalues[ii], 50);
-    }
 
     int ccount = 0;
     memset(keyvalues, 0, sizeof(keyvalues));
@@ -261,25 +226,14 @@ bool _migratetable()
         strcpy(keyvalues[ccount], tmpvalue);
         ccount++;
 
-        // 每starg.maxcount条记录执行一次迁移语句。
-        if (ccount == starg.maxcount)
+        // 每MAXPARAMS条记录执行一次删除语句。
+        if (ccount == MAXPARAMS)
         {
-            // 先插入starg.dsttname表。
-            if (stmtins.execute() != 0)
-            {
-                logfile.Write("stmtins.execute() failed.\n%s\n%s\n", stmtins.m_sql, stmtins.m_cda.message);
-                if (stmtins.m_cda.rc != 1062)
-                    return false;
-            }
-
-            // 再删除starg.srctname表。
             if (stmtdel.execute() != 0)
             {
                 logfile.Write("stmtdel.execute() failed.\n%s\n%s\n", stmtdel.m_sql, stmtdel.m_cda.message);
                 return false;
             }
-
-            conn2.commit();
 
             ccount = 0;
             memset(keyvalues, 0, sizeof(keyvalues));
@@ -288,27 +242,18 @@ bool _migratetable()
         }
     }
 
-    // 如果不足starg.maxcount条记录，再执行一次迁移。
+    // 如果不足MAXPARAMS条记录，再执行一次删除。
     if (ccount > 0)
     {
-        if (stmtins.execute() != 0)
-        {
-            logfile.Write("stmtins.execute() failed.\n%s\n%s\n", stmtins.m_sql, stmtins.m_cda.message);
-            if (stmtins.m_cda.rc != 1062)
-                return false;
-        }
-
         if (stmtdel.execute() != 0)
         {
             logfile.Write("stmtdel.execute() failed.\n%s\n%s\n", stmtdel.m_sql, stmtdel.m_cda.message);
             return false;
         }
-
-        conn2.commit();
     }
 
     if (stmtsel.m_cda.rpc > 0)
-        logfile.Write("migrate %s to %s %d rows in %.02fsec.\n", starg.srctname, starg.dsttname, stmtsel.m_cda.rpc, Timer.Elapsed());
+        logfile.Write("delete from %s %d rows in %.02fsec.\n", starg.tname, stmtsel.m_cda.rpc, Timer.Elapsed());
 
     return true;
 }

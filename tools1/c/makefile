@@ -21,7 +21,7 @@ MYSQLCPP = /project/public/db/mysql/_mysql.cpp
 
 
 all:procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver \
-    tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex
+    tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex deletetable migratetable
 
 procctl:procctl.cpp
 		g++ -o procctl procctl.cpp
@@ -83,6 +83,14 @@ syncincrementex:syncincrementex.cpp _tools.h _tools.cpp
 	g++ $(CFLAGS) -o syncincrementex syncincrementex.cpp _tools.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
 	cp syncincrementex ../bin/.
 
+deletetable:deletetable.cpp
+	g++ $(CFLAGS) -o deletetable deletetable.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
+	cp deletetable ../bin/.
+
+migratetable:migratetable.cpp _tools.h _tools.cpp
+	g++ $(CFLAGS) -o migratetable migratetable.cpp _tools.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
+	cp migratetable ../bin/.
+
 clean:
 		rm -f procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver
-		rm -f tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex
+		rm -f tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex deletetable migratetable

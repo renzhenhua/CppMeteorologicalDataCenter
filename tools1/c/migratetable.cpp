@@ -1,6 +1,6 @@
 /*
- *  程序名：migratetable.cpp，本程序是数据中心的公共功能模块，用于迁移表中的数据。
- *  作者：吴从周。
+ *  程序名：migratetable.cpp，本程序是数据中心的公共功能模块，采用增量的方法同步MySQL数据库之间的表。
+ *  作者：任振华。
  */
 #include "_tools.h"
 
@@ -46,8 +46,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // 关闭全部的信号和输入输出
-    // 处理程序退出的信号
+    // 关闭全部的信号和输入输出，处理程序退出的信号。
     CloseIOAndSignal();
     signal(SIGINT, EXIT);
     signal(SIGTERM, EXIT);
@@ -91,7 +90,7 @@ void _help(char *argv[])
 {
     printf("Using:/project/tools1/bin/migratetable logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/migratetable /log/idc/migratetable_ZHOBTMIND.log \"<connstr>127.0.0.1,root,mysqlpwd,mysql,3306</connstr><srctname>T_ZHOBTMIND</srctname><dsttname>T_ZHOBTMIND_HIS</dsttname><keycol>keyid</keycol><where>where ddatetime<timestampadd(minute,-120,now())</where><starttime>01,02,03,04,05,13</starttime><maxcount>300</maxcount><timeout>120</timeout><pname>migratetable_ZHOBTMIND</pname>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/migratetable /log/idc/migratetable_ZHOBTMIND.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><srctname>T_ZHOBTMIND</srctname><dsttname>T_ZHOBTMIND_HIS</dsttname><keycol>keyid</keycol><where>where ddatetime<timestampadd(minute,-120,now())</where><starttime>01,02,03,04,05,13</starttime><maxcount>300</maxcount><timeout>120</timeout><pname>migratetable_ZHOBTMIND</pname>\"\n\n");
 
     printf("本程序是数据中心的公共功能模块，用于迁移表中的数据。\n");
 
@@ -308,7 +307,7 @@ bool _migratetable()
     }
 
     if (stmtsel.m_cda.rpc > 0)
-        logfile.Write("migrate %s to %s %d rows in %.02fsec.\n", starg.srctname, starg.dsttname, stmtsel.m_cda.rpc, Timer.Elapsed());
+    logfile.Write("migrate %s to %s %d rows in %.02fsec.\n", starg.srctname, starg.dsttname, stmtsel.m_cda.rpc, Timer.Elapsed());
 
     return true;
 }
