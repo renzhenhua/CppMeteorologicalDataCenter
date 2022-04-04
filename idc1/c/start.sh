@@ -45,7 +45,7 @@
 /project/tools1/bin/procctl 10 /project/idc1/bin/obtmindtodb /idcdata/surfdata "127.0.0.1,root,123456,ren,3306" utf8 /log/idc/obtmindtodb.log
 
 # 清理T_ZHOBTMIND?表中120分之前的数据，防止磁盘空间被撑满。
-/project/tools1/bin/procctl 120 /project/tools1/bin/execsql /project/idc/sql/cleardata.sql "127.0.0.1,root,123456,ren,3306" utf8 /log/idc/execsql.log
+#/project/tools1/bin/procctl 120 /project/tools1/bin/execsql /project/idc/sql/cleardata.sql "127.0.0.1,root,123456,ren,3306" utf8 /log/idc/execsql.log
 
 # 每隔1小时把T_ZHOBTCODE表中全部的数据抽取出来。
 /project/tools1/bin/procctl 3600 /project/tools1/bin/dminingmysql /log/idc/dminingmysql_ZHOBTCODE.log "<connstr>127.0.0.1,root,123456,ren,3306</connstr><charset>utf8</charset><selectsql>select obtid,cityname,provname,lat,lon,height from T_ZHOBTCODE</selectsql><fieldstr>obtid,cityname,provname,lat,lon,height</fieldstr><fieldlen>10,30,30,10,10,10</fieldlen><bfilename>ZHOBTCODE</bfilename><efilename>HYCZ</efilename><outpath>/idcdata/dmindata</outpath><timeout>30</timeout><pname>dminingmysql_ZHOBTCODE</pname>"

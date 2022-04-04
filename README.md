@@ -14,4 +14,8 @@
   * ftpputfiles.cpp ftp上传文件
   * tcpputfiles.cpp 采用tcp协议，实现文件上传的客户端
   * fileserver.cpp 文件传输的服务
+  * diminingmysql.cpp 本程序是数据中心的公共功能模块，用于从mysql数据库源表抽取数据，生成xml文件
+  * xmltodb.cpp，本程序是数据中心的公共功能模块，用于把xml文件入库到MySQL的表中。
+  * deletetable.cpp，本程序是数据中心的公共功能模块，采用增量的方法同步MySQL数据库之间的表
+  * syncupdate.cpp，本程序是数据中心的公共功能模块，采用刷新的方法同步MySQL数据库之间的表
   
