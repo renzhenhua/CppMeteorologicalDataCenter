@@ -1,6 +1,6 @@
 /*
  *  程序名：xmltodb_oracle.cpp，本程序是数据中心的公共功能模块，用于把xml文件入库到Oracle的表中。
- *  作者：吴从周。
+ *  作者：任振华。
  */
 #include "_tools_oracle.h"
 
@@ -110,7 +110,7 @@ void _help(char *argv[])
 {
     printf("Using:/project/tools1/bin/xmltodb_oracle logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/xmltodb_oracle /log/idc/xmltodb_oracle_vip2.log \"<connstr>qxidc/qxidcpwd@snorcl11g_132</connstr><charset>Simplified Chinese_China.AL32UTF8</charset><inifilename>/project/idc1/ini/xmltodb.xml</inifilename><xmlpath>/idcdata/xmltodb/vip2</xmlpath><xmlpathbak>/idcdata/xmltodb/vip2bak</xmlpathbak><xmlpatherr>/idcdata/xmltodb/vip2err</xmlpatherr><timetvl>5</timetvl><timeout>50</timeout><pname>xmltodb_oracle_vip2</pname>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/xmltodb_oracle /log/idc/xmltodb_oracle_vip2.log \"<connstr>qxidc/qxidcpwd@snorcl11g_gz</connstr><charset>Simplified Chinese_China.AL32UTF8</charset><inifilename>/project/idc1/ini/xmltodb.xml</inifilename><xmlpath>/idcdata/xmltodb/vip2</xmlpath><xmlpathbak>/idcdata/xmltodb/vip2bak</xmlpathbak><xmlpatherr>/idcdata/xmltodb/vip2err</xmlpatherr><timetvl>5</timetvl><timeout>50</timeout><pname>xmltodb_oracle_vip2</pname>\"\n\n");
 
     printf("本程序是数据中心的公共功能模块，用于把xml文件入库到Oracle的表中。\n");
     printf("logfilename   本程序运行的日志文件。\n");
@@ -609,7 +609,7 @@ void crtsql()
         if (strcmp(TABCOLS.m_vallcols[ii].datatype, "date") != 0)
             SNPRINTF(strtemp, 100, sizeof(strtemp), " and %s=:%d", TABCOLS.m_vallcols[ii].colname, colseq);
         else
-            SNPRINTF(strtemp, 100, sizeof(strtemp), " and %s=to_date(:%d,'yyyymmddhh24miss')", TABCOLS.m_vallcols[ii].colname, colseq);
+                    SNPRINTF(strtemp, 100, sizeof(strtemp), " and %s=to_date(:%d,'yyyymmddhh24miss')", TABCOLS.m_vallcols[ii].colname, colseq);
 
         strcat(strupdatesql, strtemp);
 

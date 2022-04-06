@@ -19,9 +19,22 @@ MYSQLLIBS = -lmysqlclient
 # 开发框架mysql的cpp文件名，这里直接包含进来，没有采用链接库，是为了方便调试。
 MYSQLCPP = /project/public/db/mysql/_mysql.cpp
 
+# oracle头文件路径
+ORAINCL = -I$(ORACLE_HOME)/rdbms/public -I/project/public/db/oracle
+
+# oracle库文件路径
+ORALIB =  -L$(ORACLE_HOME)/lib -L.
+
+# oracle的oci库
+ORALIBS = -lclntsh
+
+# 开发框架oracle的cpp文件名，这里直接包含进来，没有采用链接库，是为了方便调试。
+ORACPP = /project/public/db/oracle/_ooci.cpp
+
 
 all:procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver \
-    tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex deletetable migratetable
+    tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex \
+	deletetable migratetable xmltodb_oracle
 
 procctl:procctl.cpp
 		g++ -o procctl procctl.cpp
@@ -71,6 +84,10 @@ xmltodb:xmltodb.cpp _tools.h _tools.cpp
 	g++ $(CFLAGS) -o xmltodb xmltodb.cpp _tools.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
 	cp xmltodb ../bin/.
 
+xmltodb_oracle:xmltodb_oracle.cpp _tools_oracle.h _tools_oracle.cpp
+	g++ $(CFLAGS) -o xmltodb_oracle xmltodb_oracle.cpp _tools_oracle.cpp $(PUBINCL) $(PUBCPP) $(ORAINCL) $(ORALIB) $(ORALIBS) $(ORACPP) -lm -lc
+	cp xmltodb_oracle ../bin/.
+
 syncupdate:syncupdate.cpp _tools.h _tools.cpp
 	g++ $(CFLAGS) -o syncupdate syncupdate.cpp _tools.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
 	cp syncupdate ../bin/.
@@ -93,4 +110,5 @@ migratetable:migratetable.cpp _tools.h _tools.cpp
 
 clean:
 		rm -f procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver
-		rm -f tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex deletetable migratetable
+		rm -f tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex 
+		rm -f deletetable migratetable xmltodb_oracle
