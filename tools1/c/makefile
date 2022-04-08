@@ -34,7 +34,8 @@ ORACPP = /project/public/db/oracle/_ooci.cpp
 
 all:procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver \
     tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex \
-	deletetable migratetable xmltodb_oracle deletetable_oracle migratetable_oracle
+	deletetable migratetable xmltodb_oracle deletetable_oracle migratetable_oracle \
+	dminingoracle
 
 procctl:procctl.cpp
 		g++ -o procctl procctl.cpp
@@ -92,9 +93,21 @@ deletetable_oracle:deletetable_oracle.cpp
 	g++ $(CFLAGS) -o deletetable_oracle deletetable_oracle.cpp $(PUBINCL) $(PUBCPP) $(ORAINCL) $(ORALIB) $(ORALIBS) $(ORACPP) -lm -lc
 	cp deletetable_oracle ../bin/.
 
+dminingoracle:dminingoracle.cpp 
+	g++ $(CFLAGS) -o dminingoracle dminingoracle.cpp $(PUBINCL) $(PUBCPP) $(ORAINCL) $(ORALIB) $(ORALIBS) $(ORACPP) -lm -lc
+	cp dminingoracle ../bin/.
+
 migratetable_oracle:migratetable_oracle.cpp _tools_oracle.h _tools_oracle.cpp
 	g++ $(CFLAGS) -o migratetable_oracle migratetable_oracle.cpp _tools_oracle.cpp $(PUBINCL) $(PUBCPP) $(ORAINCL) $(ORALIB) $(ORALIBS) $(ORACPP) -lm -lc
 	cp migratetable_oracle ../bin/.
+
+syncupdate_oracle:syncupdate_oracle.cpp _tools_oracle.h _tools_oracle.cpp
+	g++ $(CFLAGS) -o syncupdate_oracle syncupdate_oracle.cpp _tools_oracle.cpp $(PUBINCL) $(PUBCPP) $(ORAINCL) $(ORALIB) $(ORALIBS) $(ORACPP) -lm -lc
+	cp syncupdate_oracle ../bin/.
+
+syncincrement_oracle:syncincrement_oracle.cpp _tools_oracle.h _tools_oracle.cpp
+	g++ $(CFLAGS) -o syncincrement_oracle syncincrement_oracle.cpp _tools_oracle.cpp $(PUBINCL) $(PUBCPP) $(ORAINCL) $(ORALIB) $(ORALIBS) $(ORACPP) -lm -lc
+	cp syncincrement_oracle ../bin/.
 
 syncupdate:syncupdate.cpp _tools.h _tools.cpp
 	g++ $(CFLAGS) -o syncupdate syncupdate.cpp _tools.cpp $(PUBINCL) $(PUBCPP) $(MYSQLINCL) $(MYSQLLIB) $(MYSQLLIBS) $(MYSQLCPP) -lm -lc
@@ -120,3 +133,4 @@ clean:
 		rm -f procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver
 		rm -f tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex 
 		rm -f deletetable migratetable xmltodb_oracle deletetable_oracle migratetable_oracle
+		rm -f dminingoracle

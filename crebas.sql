@@ -1,15 +1,15 @@
-drop index IDX_ZHOBTMIND_HIS_3;
+drop index IDX_ZHOBTMIND3_3;
 
-drop index IDX_ZHOBTMIND_HIS_2;
+drop index IDX_ZHOBTMIND3_2;
 
-drop index IDX_ZHOBTMIND_HIS_1;
+drop index IDX_ZHOBTMIND3_1;
 
-drop table T_ZHOBTMIND_HIS cascade constraints;
+drop table T_ZHOBTMIND3 cascade constraints;
 
 /*==============================================================*/
-/* Table: T_ZHOBTMIND_HIS                                       */
+/* Table: T_ZHOBTMIND3                                          */
 /*==============================================================*/
-create table T_ZHOBTMIND_HIS 
+create table T_ZHOBTMIND3 
 (
    obtid              varchar2(10)         not null,
    ddatetime          date                 not null,
@@ -22,61 +22,61 @@ create table T_ZHOBTMIND_HIS
    vis                number(8),
    upttime            date                 default sysdate not null,
    keyid              number(15)           not null,
-   constraint PK_ZHOBTMIND_HIS primary key (obtid, ddatetime),
-   constraint ZHOBTMIND_HIS_KEYID unique (keyid)
+   constraint PK_ZHOBTMIND3 primary key (obtid, ddatetime),
+   constraint ZHOBTMIND3_KEYID unique (keyid)
 );
 
-comment on column T_ZHOBTMIND_HIS.obtid is
+comment on column T_ZHOBTMIND3.obtid is
 '站点代码。';
 
-comment on column T_ZHOBTMIND_HIS.ddatetime is
+comment on column T_ZHOBTMIND3.ddatetime is
 '数据时间，精确到分钟。';
 
-comment on column T_ZHOBTMIND_HIS.t is
+comment on column T_ZHOBTMIND3.t is
 '湿度，单位：0.1摄氏度。';
 
-comment on column T_ZHOBTMIND_HIS.p is
+comment on column T_ZHOBTMIND3.p is
 '气压，单位：0.1百帕。';
 
-comment on column T_ZHOBTMIND_HIS.u is
+comment on column T_ZHOBTMIND3.u is
 '相对湿度，0-100之间的值。';
 
-comment on column T_ZHOBTMIND_HIS.wd is
+comment on column T_ZHOBTMIND3.wd is
 '风向，0-360之间的值。';
 
-comment on column T_ZHOBTMIND_HIS.wf is
+comment on column T_ZHOBTMIND3.wf is
 '风速：单位0.1m/s。';
 
-comment on column T_ZHOBTMIND_HIS.r is
+comment on column T_ZHOBTMIND3.r is
 '降雨量：0.1mm。';
 
-comment on column T_ZHOBTMIND_HIS.vis is
+comment on column T_ZHOBTMIND3.vis is
 '能见度：0.1米。';
 
-comment on column T_ZHOBTMIND_HIS.upttime is
+comment on column T_ZHOBTMIND3.upttime is
 '更新时间。';
 
-comment on column T_ZHOBTMIND_HIS.keyid is
+comment on column T_ZHOBTMIND3.keyid is
 '记录编号，从与本表同名的序列生成器中获取。';
 
 /*==============================================================*/
-/* Index: IDX_ZHOBTMIND_HIS_1                                   */
+/* Index: IDX_ZHOBTMIND3_1                                      */
 /*==============================================================*/
-create unique index IDX_ZHOBTMIND_HIS_1 on T_ZHOBTMIND_HIS (
+create unique index IDX_ZHOBTMIND3_1 on T_ZHOBTMIND3 (
    ddatetime ASC,
    obtid ASC
 );
 
 /*==============================================================*/
-/* Index: IDX_ZHOBTMIND_HIS_2                                   */
+/* Index: IDX_ZHOBTMIND3_2                                      */
 /*==============================================================*/
-create index IDX_ZHOBTMIND_HIS_2 on T_ZHOBTMIND_HIS (
+create index IDX_ZHOBTMIND3_2 on T_ZHOBTMIND3 (
    ddatetime ASC
 );
 
 /*==============================================================*/
-/* Index: IDX_ZHOBTMIND_HIS_3                                   */
+/* Index: IDX_ZHOBTMIND3_3                                      */
 /*==============================================================*/
-create index IDX_ZHOBTMIND_HIS_3 on T_ZHOBTMIND_HIS (
+create index IDX_ZHOBTMIND3_3 on T_ZHOBTMIND3 (
    obtid ASC
 );
