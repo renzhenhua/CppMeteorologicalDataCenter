@@ -1,9 +1,11 @@
 /*
- *  程序名：deletetable.cpp，本程序是数据中心的公共功能模块，采用增量的方法同步MySQL数据库之间的表。
+ *  程序名：deletetable_oracle.cpp，本程序是数据中心的公共功能模块，用于定时清理表中的数据。
  *  作者：任振华。
  */
 #include "_public.h"
-#include "_mysql.h"
+#include "_ooci.h"
+
+#define MAXPARAMS 256
 
 struct st_arg
 {
@@ -27,8 +29,7 @@ CLogFile logfile;
 // 判断当前时间是否在程序运行的时间区间内。
 bool instarttime();
 
-connection conn1; // 用于执行查询SQL语句的数据库连接。
-connection conn2; // 用于执行删除SQL语句的数据库连接。
+connection conn;
 
 // 业务处理主函数。
 bool _deletetable();
@@ -45,7 +46,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // 关闭全部的信号和输入输出，处理程序退出的信号。
+    // 关闭全部的信号和输入输出
+    // 处理程序退出的信号
     CloseIOAndSignal();
     signal(SIGINT, EXIT);
     signal(SIGTERM, EXIT);
@@ -68,15 +70,9 @@ int main(int argc, char *argv[])
     // 注意，在调试程序的时候，可以启用类似以下的代码，防止超时。
     // PActive.AddPInfo(starg.timeout*100,starg.pname);
 
-    if (conn1.connecttodb(starg.connstr, NULL) != 0)
+    if (conn.connecttodb(starg.connstr, NULL, 1) != 0) // 开启自动提交。
     {
-        logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn1.m_cda.message);
-        EXIT(-1);
-    }
-
-    if (conn2.connecttodb(starg.connstr, NULL, 1) != 0) // 开启自动提交。
-    {
-        logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn2.m_cda.message);
+        logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn.m_cda.message);
         EXIT(-1);
     }
 
@@ -89,9 +85,9 @@ int main(int argc, char *argv[])
 // 显示程序的帮助
 void _help(char *argv[])
 {
-    printf("Using:/project/tools1/bin/deletetable logfilename xmlbuffer\n\n");
+    printf("Using:/project/tools1/bin/deletetable_oracle logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/deletetable /log/idc/deletetable_ZHOBTMIND1.log \"<connstr>127.0.0.1,root,123456,ren,3306</connstr><tname>T_ZHOBTMIND1</tname><keycol>keyid</keycol><where>where ddatetime<timestampadd(minute,-120,now())</where><starttime>01,02,03,04,05,13</starttime><timeout>120</timeout><pname>deletetable_ZHOBTMIND1</pname>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 3600 /project/tools1/bin/deletetable_oracle /log/idc/deletetable_oracle_ZHOBTMIND1.log \"<connstr>qxidc/qxidcpwd@snorcl11g_gz</connstr><tname>T_ZHOBTMIND1</tname><keycol>keyid</keycol><where>where ddatetime<sysdate-0.03</where><starttime>01,02,03,04,05,13</starttime><timeout>120</timeout><pname>deletetable_oracle_ZHOBTMIND1</pname>\"\n\n");
 
     printf("本程序是数据中心的公共功能模块，用于定时清理表中的数据。\n");
 
@@ -165,8 +161,7 @@ void EXIT(int sig)
 {
     logfile.Write("程序退出，sig=%d\n\n", sig);
 
-    conn1.disconnect();
-    conn2.disconnect();
+    conn.disconnect();
 
     exit(0);
 }
@@ -179,7 +174,7 @@ bool _deletetable()
     char tmpvalue[51]; // 存放从表提取待删除记录的唯一键的值。
 
     // 从表提取待删除记录的唯一键。
-    sqlstatement stmtsel(&conn1);
+    sqlstatement stmtsel(&conn);
     stmtsel.prepare("select %s from %s %s", starg.keycol, starg.tname, starg.where);
     stmtsel.bindout(1, tmpvalue, 50);
 
@@ -201,7 +196,7 @@ bool _deletetable()
     char keyvalues[MAXPARAMS][51]; // 存放唯一键字段的值。
 
     // 准备删除数据的SQL，一次删除MAXPARAMS条记录。
-    sqlstatement stmtdel(&conn2);
+    sqlstatement stmtdel(&conn);
     stmtdel.prepare("delete from %s where %s in (%s)", starg.tname, starg.keycol, bindstr);
     for (int ii = 0; ii < MAXPARAMS; ii++)
         stmtdel.bindin(ii + 1, keyvalues[ii], 50);
