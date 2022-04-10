@@ -18,7 +18,7 @@ int main(int argc,char *argv[])
   if (pthread_create(&thid,&attr,thmain,NULL)!=0) { printf("pthread_create failed.\n"); exit(-1); }
   pthread_attr_destroy(&attr); // 销毁数据结构。
 
-  // pthread_detach(pthread_self());
+  pthread_detach(pthread_self());
 
   sleep(5);
 
