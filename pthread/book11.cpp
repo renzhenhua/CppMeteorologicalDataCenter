@@ -8,6 +8,7 @@
 #include <iostream>
 
 std::atomic<int> var;
+// int var=0;
 
 void *thmain(void *arg);    // 线程主函数。
 
