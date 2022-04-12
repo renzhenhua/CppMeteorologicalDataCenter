@@ -1,6 +1,6 @@
 /*
  * 程序名：demo20.cpp，此程序演示采用开发框架的CTcpServer类实现socket通讯多线程的服务端。
- * 作者：吴从周
+ * 作者：任振华
  */
 #include "../_public.h"
 

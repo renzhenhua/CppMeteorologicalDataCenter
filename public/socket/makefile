@@ -1,4 +1,4 @@
-all:demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo31 demo32 demo33
+all:demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33
 
 demo07:demo07.cpp
 	g++ -g -o demo07 demo07.cpp ../_public.cpp -lm -lc
@@ -21,6 +21,9 @@ demo13:demo13.cpp
 demo14:demo14.cpp
 	g++ -g -o demo14 demo14.cpp ../_public.cpp -lm -lc
 
+demo20:demo20.cpp
+	g++ -g -o demo20 demo20.cpp ../_public.cpp -lpthread -lm -lc
+
 demo31:demo31.cpp
 	g++ -g -o demo31 demo31.cpp ../_public.cpp -lm -lc
 
@@ -31,4 +34,4 @@ demo33:demo33.cpp
 	g++ -g -o demo33 demo33.cpp ../_public.cpp -lm -lc
 
 clean:
-	rm demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo31 demo32 demo33
+	rm demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33

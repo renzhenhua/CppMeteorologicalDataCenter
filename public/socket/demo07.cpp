@@ -32,7 +32,7 @@ int main(int argc,char *argv[])
     if (TcpClient.Read(buffer)==false) break; // 接收服务端的回应报文。
     printf("接收：%s\n",buffer);
 
-    sleep(1);  // 每隔一秒后再次发送报文。
+    // sleep(1);  // 每隔一秒后再次发送报文。
   }
 }
 
