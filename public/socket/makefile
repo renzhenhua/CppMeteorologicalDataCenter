@@ -1,4 +1,4 @@
-all:demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33 demo26 demo27
+all:demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33 demo26 demo27 demo28
 
 demo07:demo07.cpp
 	g++ -g -o demo07 demo07.cpp ../_public.cpp -lm -lc 
@@ -28,7 +28,10 @@ demo26:demo26.cpp
 	g++ -g -o demo26 demo26.cpp ../_public.cpp -lm -lc
 
 demo27:demo27.cpp
-	g++ -g -o demo27 demo27.cpp ../_public.cpp -lm -lc 
+	g++ -g -o demo27 demo27.cpp ../_public.cpp -lm -lc
+
+demo28:demo28.cpp
+	g++ -g -o demo28 demo28.cpp -I/project/public /project/public/_public.cpp -I/oracle/home/rdbms/public -I/project/public/db/oracle -L/oracle/home/lib -L. -lclntsh /project/public/db/oracle/_ooci.cpp -lm -lc 
 
 demo31:demo31.cpp
 	g++ -g -o demo31 demo31.cpp ../_public.cpp -lm -lc 
@@ -40,4 +43,4 @@ demo33:demo33.cpp
 	g++ -g -o demo33 demo33.cpp ../_public.cpp -lm -lc 
 
 clean:
-	rm demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33 demo26 demo27
+	rm demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33 demo26 demo27 demo28
