@@ -2,33 +2,33 @@
  *  程序名：webserver1.cpp，数据服务总线服务。
  *  最简单的web服务器，收到客户请求的，返回html文件。
  *  作者：吴从周。
-*/
+ */
 #include "_public.h"
 #include "_mysql.h"
 
-void *pthmain(void *arg);  // 线程主函数。
+void *pthmain(void *arg); // 线程主函数。
 
-vector<long> vpthid;       // 存放线程id的容器。
+vector<long> vpthid; // 存放线程id的容器。
 
-void mainexit(int sig);    // 信号2和15的处理函数。
+void mainexit(int sig); // 信号2和15的处理函数。
 
-void pthexit(void *arg);   // 线程清理函数。
- 
-CLogFile logfile;          // 服务程序的运行日志。
-CTcpServer TcpServer;      // 创建服务端对象。
+void pthexit(void *arg); // 线程清理函数。
+
+CLogFile logfile;     // 服务程序的运行日志。
+CTcpServer TcpServer; // 创建服务端对象。
 
 // 读取客户端的报文。
-int ReadT(const int sockfd,char *buffer,const int size,const int itimeout);
+int ReadT(const int sockfd, char *buffer, const int size, const int itimeout);
 
 // 把html文件的内容发送给客户端。
-bool SendHtmlFile(const int sockfd,const char *filename);
+bool SendHtmlFile(const int sockfd, const char *filename);
 
 struct st_arg
 {
-  char connstr[101];  // 数据库的连接参数。
-  char charset[51];   // 数据库的字符集。
-  int  port;          // web服务监听的端口。
-  int  timeout;       // 线程超时时间。
+  char connstr[101]; // 数据库的连接参数。
+  char charset[51];  // 数据库的字符集。
+  int port;          // web服务监听的端口。
+  int timeout;       // 线程超时时间。
 } starg;
 
 // 显示程序的帮助
@@ -37,45 +37,58 @@ void _help(char *argv[]);
 // 把xml解析到参数starg结构中
 bool _xmltoarg(char *strxmlbuffer);
 
-int main(int argc,char *argv[])
+int main(int argc, char *argv[])
 {
-  if (argc!=3) { _help(argv); return -1; }
+  if (argc != 3)
+  {
+    _help(argv);
+    return -1;
+  }
 
   // 关闭全部的信号和输入输出
   CloseIOAndSignal();
 
   // 处理程序退出的信号
-  signal(SIGINT,mainexit); signal(SIGTERM,mainexit);
+  signal(SIGINT, mainexit);
+  signal(SIGTERM, mainexit);
 
-  if (logfile.Open(argv[1],"a+")==false)
+  if (logfile.Open(argv[1], "a+") == false)
   {
-    printf("打开日志文件失败（%s）。\n",argv[1]); return -1;
+    printf("打开日志文件失败（%s）。\n", argv[1]);
+    return -1;
   }
- 
+
   // 把xml解析到参数starg结构中
-  if (_xmltoarg(argv[2])==false)  mainexit(-1);
+  if (_xmltoarg(argv[2]) == false)
+    mainexit(-1);
 
   // 设置信号,在shell状态下可用 "kill + 进程号" 正常终止些进程
   // 但请不要用 "kill -9 +进程号" 强行终止
-  signal(SIGINT,mainexit); signal(SIGTERM,mainexit);
- 
-  if (TcpServer.InitServer(starg.port)==false) // 初始化TcpServer的通信端口。
+  signal(SIGINT, mainexit);
+  signal(SIGTERM, mainexit);
+
+  if (TcpServer.InitServer(starg.port) == false) // 初始化TcpServer的通信端口。
   {
-    logfile.Write("TcpServer.InitServer(%s) failed.\n",starg.port); return -1;
+    logfile.Write("TcpServer.InitServer(%s) failed.\n", starg.port);
+    return -1;
   }
- 
+
   while (true)
   {
-    if (TcpServer.Accept()==false)   // 等待客户端连接。
+    if (TcpServer.Accept() == false) // 等待客户端连接。
     {
-      logfile.Write("TcpServer.Accept() failed.\n"); continue;
+      logfile.Write("TcpServer.Accept() failed.\n");
+      continue;
     }
 
     // logfile.Write("客户端(%s)已连接。\n",TcpServer.GetIP());
 
     pthread_t pthid;
-    if (pthread_create(&pthid,NULL,pthmain,(void *)(long)TcpServer.m_connfd)!=0)
-    { logfile.Write("pthread_create failed.\n"); mainexit(-1); }
+    if (pthread_create(&pthid, NULL, pthmain, (void *)(long)TcpServer.m_connfd) != 0)
+    {
+      logfile.Write("pthread_create failed.\n");
+      mainexit(-1);
+    }
 
     vpthid.push_back(pthid); // 把线程id保存到vpthid容器中。
   }
@@ -85,44 +98,47 @@ int main(int argc,char *argv[])
 
 void *pthmain(void *arg)
 {
-  pthread_cleanup_push(pthexit,arg);  // 设置线程清理函数。
+  pthread_cleanup_push(pthexit, arg); // 设置线程清理函数。
 
-  pthread_detach(pthread_self());  // 分离线程。
+  pthread_detach(pthread_self()); // 分离线程。
 
-  pthread_setcanceltype(PTHREAD_CANCEL_DISABLE,NULL);  // 设置取消方式为立即取消。
+  pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, NULL); // 设置取消方式为立即取消。
 
-  int sockfd=(int)(long)arg;  // 与客户端的socket连接。
+  int sockfd = (int)(long)arg; // 与客户端的socket连接。
 
-  int  ibuflen=0;
+  int ibuflen = 0;
   char strbuffer[1024];
 
   while (true)
   {
-    memset(strbuffer,0,sizeof(strbuffer));
+    memset(strbuffer, 0, sizeof(strbuffer));
 
     // 读取客户端的报文，如果超时或失败，线程退出。
-    if (ReadT(sockfd,strbuffer,sizeof(strbuffer),starg.timeout)<=0) pthread_exit(0);
+    if (ReadT(sockfd, strbuffer, sizeof(strbuffer), starg.timeout) <= 0)
+      pthread_exit(0);
 
     // 如果不是GET请求报文不处理，线程退出。
-    if (strncmp(strbuffer,"GET",3)!=0)  pthread_exit(0);
+    if (strncmp(strbuffer, "GET", 3) != 0)
+      pthread_exit(0);
 
-    logfile.Write("%s\n\n",strbuffer);
+    logfile.Write("%s\n\n", strbuffer);
 
     // 先把响应报文头部发送给客户端。
-    memset(strbuffer,0,sizeof(strbuffer));
-    sprintf(strbuffer,\
-           "HTTP/1.1 200 OK\r\n"\
-           "Server: webserver\r\n"\
-           "Content-Type: text/html;charset=utf-8\r\n"\
-           "Content-Length: 108904\r\n\r\n");
-    if (Writen(sockfd,strbuffer,strlen(strbuffer))== false) pthread_exit(0); 
+    memset(strbuffer, 0, sizeof(strbuffer));
+    sprintf(strbuffer,
+            "HTTP/1.1 200 OK\r\n"
+            "Server: webserver\r\n"
+            "Content-Type: text/html;charset=utf-8\r\n"
+            "Content-Length: 108904\r\n\r\n");
+    if (Writen(sockfd, strbuffer, strlen(strbuffer)) == false)
+      pthread_exit(0);
 
-    logfile.Write("%s",strbuffer);
+    logfile.Write("%s", strbuffer);
 
     // 再把html文件的内容发送给客户端。
-    SendHtmlFile(sockfd,"/project/tools/c/index.html");
+    SendHtmlFile(sockfd, "/project/tools/c/index.html");
   }
-  
+
   pthread_cleanup_pop(1);
 
   pthread_exit(0);
@@ -137,9 +153,9 @@ void mainexit(int sig)
   TcpServer.CloseListen();
 
   // 取消全部的线程。
-  for (int ii=0;ii<vpthid.size();ii++)
+  for (int ii = 0; ii < vpthid.size(); ii++)
   {
-    logfile.Write("cancel %ld\n",vpthid[ii]);
+    logfile.Write("cancel %ld\n", vpthid[ii]);
     pthread_cancel(vpthid[ii]);
   }
 
@@ -157,35 +173,41 @@ void pthexit(void *arg)
   close((int)(long)arg);
 
   // 从vpthid中删除本线程的id。
-  for (int ii=0;ii<vpthid.size();ii++)
+  for (int ii = 0; ii < vpthid.size(); ii++)
   {
-    if (vpthid[ii]==pthread_self())
+    if (vpthid[ii] == pthread_self())
     {
-      vpthid.erase(vpthid.begin()+ii);
+      vpthid.erase(vpthid.begin() + ii);
     }
   }
 
- // logfile.Write("pthexit end.\n");
+  // logfile.Write("pthexit end.\n");
 }
 
-
 // 把html文件的内容发送给客户端。
-bool SendHtmlFile(const int sockfd,const char *filename)
+bool SendHtmlFile(const int sockfd, const char *filename)
 {
-  int  bytes=0;
+  int bytes = 0;
   char buffer[5000];
 
-  FILE *fp=NULL;
+  FILE *fp = NULL;
 
-  if ( (fp=FOPEN(filename,"rb")) == NULL ) return false;
+  if ((fp = FOPEN(filename, "rb")) == NULL)
+    return false;
 
   while (true)
   {
-    memset(buffer,0,sizeof(buffer));
+    memset(buffer, 0, sizeof(buffer));
 
-    if ((bytes=fread(buffer,1,5000,fp)) ==0) break;
+    if ((bytes = fread(buffer, 1, 5000, fp)) == 0)
+      break;
 
-    if (Writen(sockfd,buffer,bytes) == false) { fclose(fp); fp=NULL; return false; }
+    if (Writen(sockfd, buffer, bytes) == false)
+    {
+      fclose(fp);
+      fp = NULL;
+      return false;
+    }
   }
 
   fclose(fp);
@@ -213,39 +235,57 @@ void _help(char *argv[])
 // 把xml解析到参数starg结构中
 bool _xmltoarg(char *strxmlbuffer)
 {
-  memset(&starg,0,sizeof(struct st_arg));
+  memset(&starg, 0, sizeof(struct st_arg));
 
-  GetXMLBuffer(strxmlbuffer,"connstr",starg.connstr,100);
-  if (strlen(starg.connstr)==0) { logfile.Write("connstr is null.\n"); return false; }
+  GetXMLBuffer(strxmlbuffer, "connstr", starg.connstr, 100);
+  if (strlen(starg.connstr) == 0)
+  {
+    logfile.Write("connstr is null.\n");
+    return false;
+  }
 
-  GetXMLBuffer(strxmlbuffer,"charset",starg.charset,50);
-  if (strlen(starg.charset)==0) { logfile.Write("charset is null.\n"); return false; }
+  GetXMLBuffer(strxmlbuffer, "charset", starg.charset, 50);
+  if (strlen(starg.charset) == 0)
+  {
+    logfile.Write("charset is null.\n");
+    return false;
+  }
 
-  GetXMLBuffer(strxmlbuffer,"port",&starg.port);
-  if (starg.port==0) { logfile.Write("port is null.\n"); return false; }
+  GetXMLBuffer(strxmlbuffer, "port", &starg.port);
+  if (starg.port == 0)
+  {
+    logfile.Write("port is null.\n");
+    return false;
+  }
 
-  GetXMLBuffer(strxmlbuffer,"timeout",&starg.timeout);
-  if (starg.timeout==0) { logfile.Write("timeout is null.\n"); return false; }
+  GetXMLBuffer(strxmlbuffer, "timeout", &starg.timeout);
+  if (starg.timeout == 0)
+  {
+    logfile.Write("timeout is null.\n");
+    return false;
+  }
 
   return true;
 }
 
 // 读取客户端的报文。
-int ReadT(const int sockfd,char *buffer,const int size,const int itimeout)
+int ReadT(const int sockfd, char *buffer, const int size, const int itimeout)
 {
   if (itimeout > 0)
   {
     fd_set tmpfd;
 
     FD_ZERO(&tmpfd);
-    FD_SET(sockfd,&tmpfd);
+    FD_SET(sockfd, &tmpfd);
 
     struct timeval timeout;
-    timeout.tv_sec = itimeout; timeout.tv_usec = 0;
+    timeout.tv_sec = itimeout;
+    timeout.tv_usec = 0;
 
     int iret;
-    if ( (iret = select(sockfd+1,&tmpfd,0,0,&timeout)) <= 0 ) return iret;
+    if ((iret = select(sockfd + 1, &tmpfd, 0, 0, &timeout)) <= 0)
+      return iret;
   }
 
-  return recv(sockfd,buffer,size,0);
+  return recv(sockfd, buffer, size, 0);
 }
