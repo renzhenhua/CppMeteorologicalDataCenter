@@ -1,5 +1,5 @@
 /*
- *  程序名：migratetable.cpp，本程序是数据中心的公共功能模块，采用增量的方法同步MySQL数据库之间的表。
+ *  程序名：migratetable.cpp，本程序是数据中心的公共功能模块，用于迁移表中的数据。
  *  作者：任振华。
  */
 #include "_tools.h"

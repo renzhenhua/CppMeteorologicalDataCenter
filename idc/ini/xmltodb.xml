@@ -2,6 +2,6 @@
 
 <!--该参数文件存放了数据中心入库参数。-->
 <xmltodb>
-  <filename>ZHOBTCODE_*.XML</filename><tname>T_ZHOBTCODE1</tname><uptbz>1</uptbz><endl/>
-  <filename>ZHOBTMIND_*.XML</filename><tname>T_ZHOBTMIND1</tname><uptbz>1</uptbz><endl/>
+  <filename>ZHOBTCODE_*.XML</filename><tname>T_ZHOBTCODE</tname><uptbz>1</uptbz><endl/>
+  <filename>ZHOBTMIND_*.XML</filename><tname>T_ZHOBTMIND</tname><uptbz>1</uptbz><endl/>
 </xmltodb>
