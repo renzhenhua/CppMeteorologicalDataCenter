@@ -1,6 +1,6 @@
 /*
- * 程序名：webserver.cpp，数据服务总线服务。
- * 最简单的web服务器，收到客户请求的，返回html文件。
+ * 程序名：webserver.cpp，此程序是数据服务总线的服务端程序。
+ * 实现了数据总线的基本功能。
  * 作者：任振华
  */
 #include "_public.h"
@@ -17,6 +17,7 @@ void *thmain(void *arg);      // 线程主函数。
 
 void thcleanup(void *arg); // 线程清理函数。
 
+// 主程序参数的结构体。
 struct st_arg
 {
     char connstr[101]; // 数据库的连接参数。
@@ -45,6 +46,10 @@ bool CheckPerm(connection *conn, const char *buffer, const int sockfd);
 // 执行接口的sql语句，把数据返回给客户端。
 bool ExecSQL(connection *conn, const char *buffer, const int sockfd);
 
+#define MAXCONNS 10         // 数据库连接池的大小。
+connection conns[MAXCONNS]; // 数据库连接池的数值。
+pthread_mutex_t mutex[];    // 数据库连接池的锁。
+
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -62,10 +67,11 @@ int main(int argc, char *argv[])
 
     if (logfile.Open(argv[1], "a+") == false)
     {
-        printf("logfile.Open(%s) failed.\n", argv[2]);
+        printf("logfile.Open(%s) failed.\n", argv[1]);
         return -1;
     }
 
+    // 把xml解析到参数starg结构中
     if (_xmltoarg(argv[2]) == false)
         EXIT(-1);
 
@@ -129,9 +135,10 @@ void *thmain(void *arg) // 线程主函数。
 
     // 连接数据库。
     connection conn;
+
     if (conn.connecttodb(starg.connstr, starg.charset) != 0)
     {
-        logfile.Write("connect, database(%s) failed.\n%s\n", starg.connstr, conn.m_cda.message);
+        logfile.Write("connect database(%s) failed.\n%s\n", starg.connstr, conn.m_cda.message);
         pthread_exit(0);
     }
 
@@ -149,25 +156,12 @@ void *thmain(void *arg) // 线程主函数。
     sprintf(strsendbuf,
             "HTTP/1.1 200 OK\r\n"
             "Server: webserver\r\n"
-            "Content-Type: text/html;charset=utf-8\r\n\r\n"
-            "<retcode>0</retcode><message>ok</message>");
+            "Content-Type: text/html;charset=utf-8\r\n\r\n");
     Writen(connfd, strsendbuf, strlen(strsendbuf));
 
     // 再执行接口的sql语句，把数据返回给客户端。
     if (ExecSQL(&conn, strrecvbuf, connfd) == false)
         pthread_exit(0);
-
-    // 把本线程id从存放线程id的容器中删除。
-    pthread_spin_lock(&vthidlock);
-    for (int ii = 0; ii < vthid.size(); ii++)
-    {
-        if (pthread_equal(pthread_self(), vthid[ii]))
-        {
-            vthid.erase(vthid.begin() + ii);
-            break;
-        }
-    }
-    pthread_spin_unlock(&vthidlock);
 
     pthread_cleanup_pop(1); // 把线程清理函数出栈。
 }
@@ -187,6 +181,9 @@ void EXIT(int sig)
     pthread_spin_lock(&vthidlock);
     for (int ii = 0; ii < vthid.size(); ii++)
     {
+        // 注意，特别注意，如果线程跑得太快，主程序可能还不及把线程的id放入容器。
+        // 线程清理函数可能没有来得及从容器中删除自己的id。
+        // 所以，以下代码可能会出现段错误。
         pthread_cancel(vthid[ii]);
     }
     pthread_spin_unlock(&vthidlock);
@@ -201,6 +198,21 @@ void EXIT(int sig)
 void thcleanup(void *arg) // 线程清理函数。
 {
     close((int)(long)arg); // 关闭客户端的socket。
+
+    // 把本线程id从存放线程id的容器中删除。
+    // 把本线程id从存放线程id的容器中删除。
+    // 注意，特别注意，如果线程跑得太快，主程序可能还不及把线程的id放入容器。
+    // 所以，这里可能会出现找不到线程id的情况。
+    pthread_spin_lock(&vthidlock);
+    for (int ii = 0; ii < vthid.size(); ii++)
+    {
+        if (pthread_equal(pthread_self(), vthid[ii]))
+        {
+            vthid.erase(vthid.begin() + ii);
+            break;
+        }
+    }
+    pthread_spin_unlock(&vthidlock);
 
     logfile.Write("线程%lu退出。\n", pthread_self());
 }
@@ -250,7 +262,7 @@ bool _xmltoarg(char *strxmlbuffer)
     return true;
 }
 
-// 读取客户端的报文
+// 读取客户端的报文。
 int ReadT(const int sockfd, char *buffer, const int size, const int itimeout)
 {
     if (itimeout > 0)
@@ -272,7 +284,7 @@ bool Login(connection *conn, const char *buffer, const int sockfd)
     char username[31], passwd[31];
 
     getvalue(buffer, "username", username, 30); // 获取用户名。
-    getvalue(buffer, "passwd", passwd, 30);     // 获取密码
+    getvalue(buffer, "passwd", passwd, 30);     // 获取密码。
 
     // 查询T_USERINFO表，判断用户名和密码是否存在。
     sqlstatement stmt;
@@ -294,7 +306,8 @@ bool Login(connection *conn, const char *buffer, const int sockfd)
                 "HTTP/1.1 200 OK\r\n"
                 "Server: webserver\r\n"
                 "Content-Type: text/html;charset=utf-8\r\n\r\n"
-                "<retcode>-1</retcode><message>username or passwd is invalied</message>");
+                "<retcode>-1</retcode><message>username or passwd is invailed</message>");
+        Writen(sockfd, strbuffer, strlen(strbuffer));
 
         return false;
     }
@@ -302,6 +315,7 @@ bool Login(connection *conn, const char *buffer, const int sockfd)
     return true;
 }
 
+// 从GET请求中获取参数。
 bool getvalue(const char *buffer, const char *name, char *value, const int len)
 {
     value[0] = 0;
@@ -331,12 +345,13 @@ bool getvalue(const char *buffer, const char *name, char *value, const int len)
     return true;
 }
 
+// 判断用户是否有调用接口的权限，如果没有，返回没有权限的响应报文。
 bool CheckPerm(connection *conn, const char *buffer, const int sockfd)
 {
     char username[31], intername[30];
 
-    getvalue(buffer, "username", username, 30);
-    getvalue(buffer, "intername", intername, 30);
+    getvalue(buffer, "username", username, 30);   // 获取用户名。
+    getvalue(buffer, "intername", intername, 30); // 获取接口名。
 
     sqlstatement stmt;
     stmt.connect(conn);
@@ -358,10 +373,12 @@ bool CheckPerm(connection *conn, const char *buffer, const int sockfd)
                 "Server: webserver\r\n"
                 "Content-Type: text/html;charset=utf-8\r\n\n\n"
                 "<retcode>-1</retcode><message>permission denied</message>");
+
         Writen(sockfd, strbuffer, strlen(strbuffer));
 
         return false;
     }
+
     return true;
 }
 
@@ -442,7 +459,6 @@ bool ExecSQL(connection *conn, const char *buffer, const int sockfd)
         logfile.Write("stmt.execute() failed.\n%s\n%s\n", stmt.m_sql, stmt.m_cda.message);
         return false;
     }
-
     strcpy(strsendbuffer, "<retcode>0</retcode><message>ok</message>\n");
     Writen(sockfd, strsendbuffer, strlen(strsendbuffer));
 

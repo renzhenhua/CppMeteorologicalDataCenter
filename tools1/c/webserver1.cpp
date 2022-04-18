@@ -1,5 +1,5 @@
 /*
- * 程序名：webserver.cpp，此程序是数据服务总线的服务端程序。
+ * 程序名：webserver1.cpp，此程序是数据服务总线的服务端程序。
  * 实现了数据总线的基本功能。
  * 作者：任振华
  */
@@ -218,7 +218,7 @@ void _help(char *argv[])
 {
   printf("Using:/project/tools1/bin/webserver logfilename xmlbuffer\n\n");
 
-  printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/webserver /log/idc/webserver.log \"<connstr>scott/tiger@snorcl11g_132</connstr><charset>Simplified Chinese_China.AL32UTF8</charset><port>8080</port>\"\n\n");
+  printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/webserver /log/idc/webserver.log \"<connstr>scott/tiger@snorcl11g_gz</connstr><charset>Simplified Chinese_China.AL32UTF8</charset><port>8080</port>\"\n\n");
 
   printf("本程序是数据总线的服务端程序，为数据中心提供http协议的数据访问接口。\n");
   printf("logfilename 本程序运行的日志文件。\n");
@@ -404,7 +404,7 @@ bool ExecSQL(connection *conn, const char *buffer, const int sockfd)
   // 准备查询数据的SQL语句。
   stmt.prepare(selectsql);
 
-  // http://192.168.174.132:8080?username=ty&passwd=typwd&intername=getzhobtmind3&obtid=59287&begintime=20211024094318&endtime=20211024113920
+  // http://175.178.53.221:8080?username=ty&passwd=typwd&intername=getzhobtmind3&obtid=59287&begintime=20211024094318&endtime=20221024113920
   // SQL语句：   select obtid,to_char(ddatetime,'yyyymmddhh24miss'),t,p,u,wd,wf,r,vis from T_ZHOBTMIND where obtid=:1 and ddatetime>=to_date(:2,'yyyymmddhh24miss') and ddatetime<=to_date(:3,'yyyymmddhh24miss')
   // colstr字段：obtid,ddatetime,t,p,u,wd,wf,r,vis
   // bindin字段：obtid,begintime,endtime
