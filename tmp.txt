@@ -1,9 +1,0 @@
-<retcode>0</retcode><message>ok</message><retcode>0</retcode><message>ok</message>
-<data>
-<obtid>59287</obtid><ddatetime>20220417132127</ddatetime><t>58</t><p>10041</p><u>44</u><wd>226</wd><wf>115</wf><r>4</r><vis>103064</vis><endl/>
-<obtid>59287</obtid><ddatetime>20220417133823</ddatetime><t>75</t><p>10020</p><u>62</u><wd>233</wd><wf>90</wf><r>5</r><vis>102731</vis><endl/>
-<obtid>59287</obtid><ddatetime>20220417133723</ddatetime><t>83</t><p>10049</p><u>35</u><wd>197</wd><wf>132</wf><r>4</r><vis>101966</vis><endl/>
-<obtid>59287</obtid><ddatetime>20220417134123</ddatetime><t>266</t><p>10057</p><u>24</u><wd>344</wd><wf>54</wf><r>10</r><vis>102444</vis><endl/>
-<obtid>59287</obtid><ddatetime>20220417133923</ddatetime><t>187</t><p>10023</p><u>92</u><wd>285</wd><wf>62</wf><r>10</r><vis>102613</vis><endl/>
-<obtid>59287</obtid><ddatetime>20220417134223</ddatetime><t>114</t><p>10189</p><u>21</u><wd>148</wd><wf>124</wf><r>13</r><vis>102232</vis><endl/>
-</data>
