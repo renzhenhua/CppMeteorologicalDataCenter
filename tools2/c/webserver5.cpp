@@ -1,7 +1,7 @@
 /*
  * 程序名：webserver.cpp，此程序是数据服务总线的服务端程序。
  * 增加了线程池监控的功能。
- * 作者：任振华
+ * 作者：吴从周
  */
 #include "_public.h"
 #include "_ooci.h"
@@ -78,12 +78,11 @@ private:
     int m_timeout;       // 数据库连接超时时间，单位：秒。
     char m_connstr[101]; // 数据库连接参数：用户名/密码@连接名
     char m_charset[101]; // 数据库的字符集。
-
 public:
     connpool();  // 构造函数。
     ~connpool(); // 析构函数。
 
-    // 初始化数据库连接池，初始化锁，如果数据连接参数有问题，返回false。
+    // 初始化数据库连接池，初始化锁，如果数据库连接参数有问题，返回false。
     bool init(const char *connstr, const char *charset, int maxconns, int timeout);
     // 断开数据库连接，销毁锁，释放数据库连接池的内存空间。
     void destroy();
@@ -91,10 +90,10 @@ public:
     // 从数据库连接池中获取一个空闲的连接，成功返回数据库连接的地址。
     // 如果连接池已用完或连接数据库失败，返回空。
     connection *get();
-    // 归还数据库连接
+    // 归还数据库连接。
     bool free(connection *conn);
 
-    // 检查数据库连接池，断开空闲的连接，在服务程序钟，用一个专用的子线程调用此函数。
+    // 检查数据库连接池，断开空闲的连接，在服务程序中，用一个专用的子线程调用此函数。
     void checkpool();
 };
 
@@ -294,6 +293,7 @@ void *thmain(void *arg)
         }
 
         oraconnpool.free(conn);
+        ;
     }
 
     pthread_cleanup_pop(1); // 把线程清理函数出栈。
@@ -354,7 +354,7 @@ void _help(char *argv[])
 {
     printf("Using:/project/tools1/bin/webserver logfilename xmlbuffer\n\n");
 
-    printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/webserver /log/idc/webserver.log \"<connstr>scott/tiger@snorcl11g_gz</connstr><charset>Simplified Chinese_China.AL32UTF8</charset><port>8080</port>\"\n\n");
+    printf("Sample:/project/tools1/bin/procctl 10 /project/tools1/bin/webserver /log/idc/webserver.log \"<connstr>scott/tiger@snorcl11g_132</connstr><charset>Simplified Chinese_China.AL32UTF8</charset><port>8080</port>\"\n\n");
 
     printf("本程序是数据总线的服务端程序，为数据中心提供http协议的数据访问接口。\n");
     printf("logfilename 本程序运行的日志文件。\n");
@@ -540,7 +540,7 @@ bool ExecSQL(connection *conn, const char *buffer, const int sockfd)
     // 准备查询数据的SQL语句。
     stmt.prepare(selectsql);
 
-    // http://175.178.53.221:8080?username=ty&passwd=typwd&intername=getzhobtmind3&obtid=59287&begintime=20211024094318&endtime=20221024113920
+    // http://192.168.174.132:8080?username=ty&passwd=typwd&intername=getzhobtmind3&obtid=59287&begintime=20211024094318&endtime=20211024113920
     // SQL语句：   select obtid,to_char(ddatetime,'yyyymmddhh24miss'),t,p,u,wd,wf,r,vis from T_ZHOBTMIND where obtid=:1 and ddatetime>=to_date(:2,'yyyymmddhh24miss') and ddatetime<=to_date(:3,'yyyymmddhh24miss')
     // colstr字段：obtid,ddatetime,t,p,u,wd,wf,r,vis
     // bindin字段：obtid,begintime,endtime
@@ -643,14 +643,12 @@ connpool::connpool()
     m_conns = 0;
 }
 
-
-
-// 初始化数据库连接池，初始化锁，如果数据连接参数有问题，返回false。
-bool connpool::init(const char *connstr, const char *charset, int maxconns, int timeout)
+// 初始化数据库连接池，初始化锁，如果数据库连接参数有问题，返回false。
+bool connpool::init(const char *connstr, const char *charset, const int maxconns, int timeout)
 {
     // 尝试数据库，验证数据库连接参数是否正确。
     connection conn;
-    if (conn.connecttodb(const_cast<char *>(connstr), const_cast<char *>(charset)) != 0)
+    if (conn.connecttodb(connstr, charset) != 0)
     {
         printf("连接数据库失败。\n%s\n", conn.m_cda.message);
         return false;
@@ -668,7 +666,7 @@ bool connpool::init(const char *connstr, const char *charset, int maxconns, int 
     for (int ii = 0; ii < m_maxconns; ii++)
     {
         pthread_mutex_init(&m_conns[ii].mutex, 0); // 初始化锁。
-        m_conns[ii].atime = 0;                     // 数据库连接上次使用的时间初始化为0。
+        m_conns[ii].atime = 0;                     // 数据库连接上次使用的时间初初化为0。
     }
 
     return true;
@@ -759,10 +757,11 @@ bool connpool::free(connection *conn)
             return true;
         }
     }
+
     return false;
 }
 
-// 检查数据库连接池，断开空闲的连接，在服务程序钟，用一个专用的子线程调用此函数。
+// 检查连接池，断开空闲的连接。
 void connpool::checkpool()
 {
     for (int ii = 0; ii < m_maxconns; ii++)
