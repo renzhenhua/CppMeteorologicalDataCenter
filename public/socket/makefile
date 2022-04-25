@@ -1,5 +1,5 @@
 all:demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33 demo26 demo27 demo28\
-    client tcppoll
+    client tcpselect tcppoll tcpepoll
 
 demo07:demo07.cpp
 	g++ -g -o demo07 demo07.cpp ../_public.cpp -lm -lc 
@@ -44,11 +44,17 @@ demo33:demo33.cpp
 	g++ -g -o demo33 demo33.cpp ../_public.cpp -lm -lc
 
 client:client.cpp
-	g++ -g -o client client.cpp ../_public.cpp -lm -lc 
+	g++ -g -o client client.cpp ../_public.cpp -lm -lc
+
+tcpselect:tcpselect.cpp
+	g++ -g -o tcpselect tcpselect.cpp ../_public.cpp -lm -lc 
 
 tcppoll:tcppoll.cpp
 	g++ -g -o tcppoll tcppoll.cpp ../_public.cpp -lm -lc
 
+tcpepoll:tcpepoll.cpp
+	g++ -g -o tcpepoll tcpepoll.cpp ../_public.cpp -lm -lc
+
 clean:
 	rm demo07 demo08 demo10 demo11 demo12 demo13 demo14 demo20 demo31 demo32 demo33 demo26 demo27 demo28\
-	rm client tcppoll
+	rm client tcpselect tcppoll tcpepoll
