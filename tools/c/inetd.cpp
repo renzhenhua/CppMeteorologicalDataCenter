@@ -1,5 +1,5 @@
 /*
- * 程序名：rinetd.cpp，网络代理服务程序-外网端。
+ * 程序名：inetd.cpp，网络代理服务程序。
  * 作者：吴从周
  */
 #include "_public.h"
@@ -25,8 +25,8 @@ int tfd = 0;     // 定时器的句柄。
 int clientsocks[MAXSOCK]; // 存放每个socket连接对端的socket的值。
 int clientatime[MAXSOCK]; // 存放每个socket连接最后一次收发报文的时间。
 
-int cmdlistensock = 0; // 服务端监听内网客户端的socket。
-int cmdconnsock = 0;   // 内网客户端与服务端的控制通道。
+// 向目标ip和端口发起socket连接。
+int conntodst(const char *ip, const int port);
 
 void EXIT(int sig); // 进程退出函数。
 
@@ -36,15 +36,12 @@ CPActive PActive; // 进程心跳。
 
 int main(int argc, char *argv[])
 {
-    if (argc != 4)
+    if (argc != 3)
     {
         printf("\n");
-        printf("Using :./rinetd logfile inifile cmdport\n\n");
-        printf("Sample:./rinetd /tmp/rinetd.log /etc/rinetd.conf 4000\n\n");
-        printf("        /project/tools1/bin/procctl 5 /project/tools1/bin/rinetd /tmp/rinetd.log /etc/rinetd.conf 4000\n\n");
-        printf("logfile 本程序运行的日志文件名。\n");
-        printf("inifile 代理服务参数配置文件。\n");
-        printf("cmdport 与内网代理程序的通讯端口。\n\n");
+        printf("Using :./inetd logfile inifile\n\n");
+        printf("Sample:./inetd /tmp/inetd.log /etc/inetd.conf\n\n");
+        printf("        /project/tools1/bin/procctl 5 /project/tools1/bin/inetd /tmp/inetd.log /etc/inetd.conf\n\n");
         return -1;
     }
 
@@ -70,24 +67,6 @@ int main(int argc, char *argv[])
 
     logfile.Write("加载代理路由参数成功(%d)。\n", vroute.size());
 
-    // 初始化监听内网程序的端口，等待内网发起连接，建立控制通道。
-    if ((cmdlistensock = initserver(atoi(argv[3]))) < 0)
-    {
-        logfile.Write("initserver(%s) failed.\n", argv[3]);
-        EXIT(-1);
-    }
-
-    // 等待内网程序的连接请求，建立控制通道。
-    struct sockaddr_in client;
-    socklen_t len = sizeof(client);
-    cmdconnsock = accept(cmdlistensock, (struct sockaddr *)&client, &len);
-    if (cmdconnsock < 0)
-    {
-        logfile.Write("accept() failed.\n");
-        EXIT(-1);
-    }
-    logfile.Write("与内部的控制通道已建立(cmdconnsock=%d)。\n", cmdconnsock);
-
     // 初始化服务端用于监听的socket。
     for (int ii = 0; ii < vroute.size(); ii++)
     {
@@ -106,15 +85,13 @@ int main(int argc, char *argv[])
 
     struct epoll_event ev; // 声明事件的数据结构。
 
-    // 为监听外网的socket准备可读事件。
+    // 为监听的socket准备可读事件。
     for (int ii = 0; ii < vroute.size(); ii++)
     {
-        ev.events = EPOLLIN; // 读事件。
-        ev.data.fd = vroute[ii].listensock;
-        epoll_ctl(epollfd, EPOLL_CTL_ADD, vroute[ii].listensock, &ev); // 把监听外网的socket的事件加入epollfd中。
+        ev.events = EPOLLIN;                                           // 读事件。
+        ev.data.fd = vroute[ii].listensock;                            // 指定事件的自定义数据，会随着epoll_wait()返回的事件一并返回。
+        epoll_ctl(epollfd, EPOLL_CTL_ADD, vroute[ii].listensock, &ev); // 把监听的socket的事件加入epollfd中。
     }
-
-    // 注意，监听内网程序的cmdlistensock和控制通道的cmdconnsock是阻塞的，也不需要epoll管理。
 
     // 创建定时器。
     tfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC); // 创建timerfd。
@@ -130,8 +107,6 @@ int main(int argc, char *argv[])
     ev.data.fd = tfd;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, tfd, &ev);
 
-    PActive.AddPInfo(30, "rinetd"); // 设置进程的心跳超时间为30秒。
-
     struct epoll_event evs[10]; // 存放epoll返回的事件。
 
     while (true)
@@ -142,7 +117,7 @@ int main(int argc, char *argv[])
         // 返回失败。
         if (infds < 0)
         {
-            logfile.Write("epoll() failed。");
+            logfile.Write("epoll() failed。\n");
             break;
         }
 
@@ -152,21 +127,12 @@ int main(int argc, char *argv[])
             // logfile.Write("events=%d, data.fd=%d\n", evs[ii].events, evs[ii].data.fd);
 
             ////////////////////////////////////////////////////////
-            // 如果定时器的时间已到，向控制通道发送心跳，设置进程的心跳，清理空闲的客户端socket。
+            // 如果定时器的时间已到，设置进程的心跳，清理空闲的客户端socket。
             if (evs[ii].data.fd == tfd)
             {
                 timerfd_settime(tfd, 0, &timeout, NULL); // 重新设置定时器。
 
                 PActive.UptATime(); // 更新进程心跳。
-
-                // 通过控制通道向内网程序发送心跳报文。
-                char buffer[256];
-                strcpy(buffer, "<activetest>");
-                if (send(cmdconnsock, buffer, strlen(buffer), 0) <= 0)
-                {
-                    logfile.Write("与内网程序的控制通道已断开。\n");
-                    EXIT(-1);
-                }
 
                 for (int jj = 0; jj < MAXSOCK; jj++)
                 {
@@ -188,13 +154,13 @@ int main(int argc, char *argv[])
             ////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////
-            // 如果发生事件的是监听外网的listensock，表示外网有新的客户端连上来。
+            // 如果发生事件的是listensock，表示有新的客户端连上来。
             int jj = 0;
             for (jj = 0; jj < vroute.size(); jj++)
             {
                 if (evs[ii].data.fd == vroute[jj].listensock)
                 {
-                    // 接受外网客户端的连接。
+                    // 接受客户端的连接。
                     struct sockaddr_in client;
                     socklen_t len = sizeof(client);
                     int srcsock = accept(vroute[jj].listensock, (struct sockaddr *)&client, &len);
@@ -207,23 +173,10 @@ int main(int argc, char *argv[])
                         break;
                     }
 
-                    // 通过控制通道向内网程序发送命令，把路由参数传给它。
-                    char buffer[256];
-                    memset(buffer, 0, sizeof(buffer));
-                    sprintf(buffer, "<dstip>%s</dstip><dstport>%d</dstport>", vroute[jj].dstip, vroute[jj].dstport);
-                    if (send(cmdconnsock, buffer, strlen(buffer), 0) <= 0)
-                    {
-                        logfile.Write("与内网的控制通道已断开。\n");
-                        EXIT(-1);
-                    }
-
-                    // 接受内网程序的连接。
-                    int dstsock = accept(cmdlistensock, (struct sockaddr *)&client, &len);
+                    // 向目标ip和端口发起socket连接。
+                    int dstsock = conntodst(vroute[jj].dstip, vroute[jj].dstport);
                     if (dstsock < 0)
-                    {
-                        close(srcsock);
                         break;
-                    }
                     if (dstsock >= MAXSOCK)
                     {
                         logfile.Write("连接数已超过最大值%d。\n", MAXSOCK);
@@ -232,7 +185,7 @@ int main(int argc, char *argv[])
                         break;
                     }
 
-                    // 把内网和外网客户端的socket对接在一起。
+                    logfile.Write("accept on port %d client(%d,%d) ok。\n", vroute[jj].listenport, srcsock, dstsock);
 
                     // 为新连接的两个socket准备可读事件，并添加到epoll中。
                     ev.data.fd = srcsock;
@@ -248,8 +201,6 @@ int main(int argc, char *argv[])
                     clientatime[srcsock] = time(0);
                     clientatime[dstsock] = time(0);
 
-                    logfile.Write("accept port %d client(%d,%d) ok。\n", vroute[jj].listenport, srcsock, dstsock);
-
                     break;
                 }
             }
@@ -260,9 +211,9 @@ int main(int argc, char *argv[])
             ////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////
-            // 以下流程处理内外网通讯链路socket的事件。
+            // 如果是客户端连接的socke有事件，表示有报文发过来或者连接已断开。
 
-            char buffer[5000]; // 从socket中读到的数据。
+            char buffer[5000]; // 存放从客户端读取的数据。
             int buflen = 0;    // 从socket中读到的数据的大小。
 
             // 从一端读取数据。
@@ -283,7 +234,7 @@ int main(int argc, char *argv[])
             // logfile.Write("from %d to %d,%d bytes。\n", evs[ii].data.fd, clientsocks[evs[ii].data.fd], buflen);
             send(clientsocks[evs[ii].data.fd], buffer, buflen, 0);
 
-            // 更新两端socket连接的活动时间。
+            // 更新客户端连接的使用时间。
             clientatime[evs[ii].data.fd] = time(0);
             clientatime[clientsocks[evs[ii].data.fd]] = time(0);
         }
@@ -368,15 +319,39 @@ bool loadroute(const char *inifile)
     return true;
 }
 
+// 向目标ip和端口发起socket连接。
+int conntodst(const char *ip, const int port)
+{
+    // 第1步：创建客户端的socket。
+    int sockfd;
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+        return -1;
+
+    // 第2步：向服务器发起连接请求。
+    struct hostent *h;
+    if ((h = gethostbyname(ip)) == 0)
+    {
+        close(sockfd);
+        return -1;
+    }
+
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(port); // 指定服务端的通讯端口。
+    memcpy(&servaddr.sin_addr, h->h_addr, h->h_length);
+
+    // 把socket设置为非阻塞。
+    fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFD, 0) | O_NONBLOCK);
+
+    connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+
+    return sockfd;
+}
+
 void EXIT(int sig)
 {
     logfile.Write("程序退出，sig=%d。\n\n", sig);
-
-    // 关闭监听内网程序的socket。
-    close(cmdlistensock);
-
-    // 关闭内网程序与服务端的控制通道。
-    close(cmdconnsock);
 
     // 关闭全部监听的socket。
     for (int ii = 0; ii < vroute.size(); ii++)

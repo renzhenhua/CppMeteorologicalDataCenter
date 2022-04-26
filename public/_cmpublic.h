@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/epoll.h>
 #include <sys/time.h>
+#include <sys/timerfd.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>

@@ -36,7 +36,7 @@ all:procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles 
     tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex \
 	deletetable migratetable xmltodb_oracle deletetable_oracle migratetable_oracle \
 	dminingoracle syncupdate_oracle syncincrement_oracle syncincrementex_oracle \
-	webserver
+	webserver inetd rinetd rinetdin
 
 procctl:procctl.cpp
 		g++ -o procctl procctl.cpp
@@ -138,9 +138,21 @@ webserver:webserver.cpp
 	g++ $(CFLAGS) -o webserver webserver.cpp $(PUBINCL) $(PUBCPP) $(ORAINCL) $(ORALIB) $(ORALIBS) $(ORACPP) -lpthread -lm -lc
 	cp webserver ../bin/.
 
+inetd:inetd.cpp
+	g++ $(CFLAGS) -o inetd inetd.cpp $(PUBINCL) $(PUBCPP) -lm -lc
+	cp inetd ../bin/.
+
+rinetd:rinetd.cpp
+	g++ $(CFLAGS) -o rinetd rinetd.cpp $(PUBINCL) $(PUBCPP) -lm -lc
+	cp rinetd ../bin/.
+
+rinetdin:rinetdin.cpp
+	g++ $(CFLAGS) -o rinetdin rinetdin.cpp $(PUBINCL) $(PUBCPP) -lm -lc
+	cp rinetdin ../bin/.
+
 clean:
 		rm -f procctl checkproc gzipfiles deletefiles ftpgetfiles ftpputfiles tcpputfiles fileserver
 		rm -f tcpgetfiles execsql dminingmysql xmltodb syncupdate syncincrement syncincrementex 
 		rm -f deletetable migratetable xmltodb_oracle deletetable_oracle migratetable_oracle
 		rm -f dminingoracle syncupdate_oracle syncincrement_oracle syncincrementex_oracle
-		rm -f webserver
+		rm -f webserver inetd rinetd rinetdin

@@ -1,6 +1,6 @@
 /*
  * 程序名：rinetd.cpp，网络代理服务程序-外网端。
- * 作者：吴从周
+ * 作者：任振华
  */
 #include "_public.h"
 
@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
     {
         printf("\n");
         printf("Using :./rinetd logfile inifile cmdport\n\n");
-        printf("Sample:./rinetd /tmp/rinetd.log /etc/rinetd.conf 4000\n\n");
-        printf("        /project/tools1/bin/procctl 5 /project/tools1/bin/rinetd /tmp/rinetd.log /etc/rinetd.conf 4000\n\n");
+        printf("Sample:./rinetd /tmp/rinetd.log /project/etc/rinetd.conf 4000\n\n");
+        printf("        /project/tools1/bin/procctl 5 /project/tools1/bin/rinetd /tmp/rinetd.log /project/etc/rinetd.conf 4000\n\n");
         printf("logfile 本程序运行的日志文件名。\n");
         printf("inifile 代理服务参数配置文件。\n");
         printf("cmdport 与内网代理程序的通讯端口。\n\n");
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
     for (int ii = 0; ii < vroute.size(); ii++)
     {
         ev.events = EPOLLIN; // 读事件。
-        ev.data.fd = vroute[ii].listensock;
+        ev.data.fd = vroute[ii].listensock;                           
         epoll_ctl(epollfd, EPOLL_CTL_ADD, vroute[ii].listensock, &ev); // 把监听外网的socket的事件加入epollfd中。
     }
 
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
                     {
                         close(srcsock);
                         break;
-                    }
+                    }                       
                     if (dstsock >= MAXSOCK)
                     {
                         logfile.Write("连接数已超过最大值%d。\n", MAXSOCK);
@@ -372,7 +372,7 @@ void EXIT(int sig)
 {
     logfile.Write("程序退出，sig=%d。\n\n", sig);
 
-    // 关闭监听内网程序的socket。
+     // 关闭监听内网程序的socket。
     close(cmdlistensock);
 
     // 关闭内网程序与服务端的控制通道。
