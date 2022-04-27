@@ -1,5 +1,6 @@
 # CPP数据中心
-
+### 主要学习参考了吴哥的[cpp气象数据中心](https://coding.imooc.com/learn/list/546.html)
+#### 学习的代码存放在pthread1, idc1, tools1中。所有代码都可以使用makefile轻松编译测试。
 * public:存放框架
 * pthread1:演示线程使用
 * idc1:生成数据
@@ -37,4 +38,14 @@
     * syncincrement_oracle.cpp，本程序是数据中心的公共功能模块，采用增量的方法同步Oracle数据库之间的表。
     * syncincrementex_oracle.cpp，本程序是数据中心的公共功能模块，采用增量的方法同步Oracle数据库之间的表。
       *  注意，本程序不使用dblink。
+  * 数据服务总线
+    * webserver.cpp 此程序是数据服务总线的服务端程序。
+      * 实践了线程池和数据库连接池。
+  * 代理模块
+    * inetd.cpp，网络代理服务程序。
+      * 正向代理
+    * [rinetd.cpp](tools1/c/rinetd.cpp)，网络代理服务程序-外网端。
+      * 反向代理外网端
+    * rinetdin.cpp，网络代理服务程序-内网端。
+      * 反向代理内网端
   
