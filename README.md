@@ -1,5 +1,5 @@
 # CPP数据中心
-### 主要学习参考了吴哥的[cpp气象数据中心](https://coding.imooc.com/learn/list/546.html)
+### 主要学习参考了吴哥的[cpp气象数据中心](https://coding.imooc.com/learn/list/546.html)。框架参考了[ccfree](https://github.com/zhuzhenxxx/ccfree)
 #### 本人学习的代码存放在pthread1, idc1, tools1中。所有代码都可以使用makefile轻松编译测试。
 * public:存放框架
 * pthread1:演示线程使用 [makefile](pthread1/makefile)
